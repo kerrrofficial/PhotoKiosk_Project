@@ -349,7 +349,7 @@ class KioskMain(QMainWindow):
         self.page_frame = self.create_frame_page(); self.stack.addWidget(self.page_frame)
         self.page_payment = self.create_payment_page(); self.stack.addWidget(self.page_payment)
         self.page_photo = self.create_photo_page(); self.stack.addWidget(self.page_photo)
-        self.page_select = self.create_select_page(); self.stack.addWidget(self.page_select)
+        self.page_select = self.create_select_page(); self.stack.addWidget(self.page_select)  # 🔥 미리 생성
         self.page_filter = self.create_filter_page(); self.stack.addWidget(self.page_filter)
         self.page_print = self.create_printing_page(); self.stack.addWidget(self.page_print)
         self.page_admin = self.create_admin_page(); self.stack.addWidget(self.page_admin)
@@ -624,66 +624,137 @@ class KioskMain(QMainWindow):
             main_layout,
             "Select Your Picture",
             f"총 {target_count}컷의 사진을 선택해주세요",
-            True,
-            lambda: self.show_page(3)
+            False,
+            None
         )
         
-        # 🔥 메인 컨텐츠 영역
+        # 메인 컨텐츠 영역
         content_widget = QWidget()
         content_widget.setStyleSheet("background: transparent;")
         
-        # 🔥 좌측: 프레임 미리보기 (절대 위치)
+        # 좌측: 프레임 미리보기 배경
         preview_bg = QWidget(content_widget)
         preview_bg.setFixedSize(self.s(700), self.s(700))
         preview_bg.setStyleSheet(f"""
             background-color: #ECECEC;
             border-radius: {self.s(12)}px;
         """)
-        # 뒤로가기 버튼과 왼쪽 정렬 (x: 110), 버튼 아래 30px
         preview_bg.move(self.s(110), self.s(30))
         
-        # 미리보기 라벨 (배경 안에 50px 여백)
+        # 미리보기 라벨
         self.lbl_select_preview = ClickableLabel(preview_bg)
         self.lbl_select_preview.setGeometry(self.s(50), self.s(50), self.s(600), self.s(600))
         self.lbl_select_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_select_preview.setStyleSheet("background: white; border: none;")
+        self.lbl_select_preview.setStyleSheet("background: transparent; border: none;")
+        self.lbl_select_preview.setScaledContents(False)
         self.lbl_select_preview.clicked.connect(self.on_preview_clicked)
         
-        # 🔥 우측: 촬영 사진 그리드
+        # 🔥 프레임 구멍 비율에 따라 그리드 배치 결정
+        paper = self.session_data.get('paper_type', 'full')
+        layout = self.session_data.get('layout_key', 'v2')
+        key = f"{paper}_{layout}"
+        
+        print(f"[DEBUG] 그리드 생성 - paper: {paper}, layout: {layout}, key: {key}")
+        
+        layout_list = FRAME_LAYOUTS.get(key, [])
+        
+        # 구멍 비율 계산
+        if layout_list:
+            first_slot = layout_list[0]
+            hole_w = first_slot['w']
+            hole_h = first_slot['h']
+            hole_ratio = hole_w / hole_h
+            print(f"[DEBUG] 첫 번째 구멍: {hole_w}x{hole_h}, 비율: {hole_ratio:.3f}")
+        else:
+            hole_ratio = 1.0
+            print(f"[DEBUG] 레이아웃 데이터 없음, 기본 비율 사용: {hole_ratio}")
+        
+        # 🔥 비율에 따라 행/열 결정
+
+        if hole_ratio > 1.1:
+            # 가로형 (가로가 더 넓음)
+            grid_cols = 4
+            grid_rows = 3
+            print(f"[DEBUG] 가로형 그리드 선택: 4열 x 3행 (비율 {hole_ratio:.3f} > 1.1)")
+        elif hole_ratio < 0.9:
+            # 세로형 (세로가 더 김)
+            grid_cols = 6
+            grid_rows = 2
+            print(f"[DEBUG] 세로형 그리드 선택: 6열 x 2행 (비율 {hole_ratio:.3f} < 0.9)")
+        else:
+            # 정방형 (비슷한 비율)
+            grid_cols = 5
+            grid_rows = 3  # 3행이지만 12개만 표시
+            print(f"[DEBUG] 정방형 그리드 선택: 5열 x 3행 (0.9 ≤ {hole_ratio:.3f} ≤ 1.1)")
+
+        # 우측: 촬영 사진 그리드
         grid_container = QWidget(content_widget)
-        grid_layout = QVBoxLayout(grid_container)
-        grid_layout.setContentsMargins(0, 0, 0, 0)
-        grid_layout.setSpacing(self.s(20))
-        
-        # 그리드 위치 계산 (우측 정렬)
-        grid_x = self.s(110 + 700 + 60)  # 좌측여백 + 미리보기 + 간격
-        grid_width = int(self.new_w) - grid_x - self.s(110)  # 우측 여백
-        grid_container.setGeometry(grid_x, self.s(30), grid_width, self.s(700))
-        
-        self.photo_grid = QGridLayout()
-        self.photo_grid.setSpacing(self.s(15))
+        grid_container.setStyleSheet("background: transparent;")
+
+        # 🔥 그리드 영역 계산
+        # 좌측: 프레임 미리보기 배경 우측 + 30px
+        # 미리보기 위치: x=110, width=700 → 우측 끝 = 810
+        grid_x = self.s(110 + 700 + 30)
+
+        # 우측: 타이머와 우측 정렬
+        # 타이머 위치: 우측에서 110 + 200
+        grid_right = int(self.new_w) - self.s(110)
+        grid_width = grid_right - grid_x
+
+        # 🔥 상단: 프레임 미리보기와 상단 정렬
+        # 미리보기 배경 y위치: 30
+        grid_y = self.s(30)
+
+        # 🔥 하단: 선택완료 버튼보다 30px 위
+        # 버튼 y위치: 30 + 700 - 140 = 590
+        grid_bottom = self.s(30 + 700 - 140 - 30)
+        grid_height = grid_bottom - grid_y
+
+        print(f"[DEBUG] 그리드 영역: x={grid_x}, y={grid_y}, w={grid_width}, h={grid_height}")
+
+        # 그리드 컨테이너 배치 (절대 위치)
+        grid_container.setGeometry(grid_x, grid_y, grid_width, grid_height)
+
+        # QGridLayout을 직접 grid_container에 설정
+        self.photo_grid = QGridLayout(grid_container)
+        self.photo_grid.setSpacing(0)  # 🔥 간격 0
+        self.photo_grid.setContentsMargins(0, 0, 0, 0)  # 🔥 여백 0
         self.photo_buttons = []
-        
+
+        # 동적으로 12개 버튼 배치
         for i in range(12):
             b = QPushButton()
+            b.setStyleSheet(f"""
+                QPushButton {{
+                    border: {self.s(2)}px solid #A8A8A8;
+                    background-color: white;
+                    padding: 0px;
+                    margin: 0px;
+                }}
+                QPushButton:hover {{
+                    border: {self.s(2)}px solid #888888;
+                }}
+                QPushButton:pressed {{
+                    background-color: #f0f0f0;
+                }}
+            """)
             b.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
             b.clicked.connect(lambda checked=False, x=i: self.on_source_click(x))
             self.photo_buttons.append(b)
-            self.photo_grid.addWidget(b, i//4, i%4)
+            
+            # 행/열 계산
+            row = i // grid_cols
+            col = i % grid_cols
+            self.photo_grid.addWidget(b, row, col)
         
-        grid_layout.addLayout(self.photo_grid)
-        
-        # 🔥 선택 완료 버튼 (타이머와 우측 정렬, 절대 위치)
+        # 선택 완료 버튼
         self.btn_finish_select = GradientButton("선택 완료", "Complete", content_widget, self.s)
-        # 타이머 위치: 우측 110 + 200(타이머 너비)
-        # 버튼을 타이머 바로 아래 배치
-        btn_x = int(self.new_w) - self.s(110) - self.s(350)  # 버튼 너비 350
-        btn_y = self.s(30 + 700 + 20)  # 미리보기 하단 + 간격
+        btn_x = int(self.new_w) - self.s(110) - self.s(350)
+        btn_y = self.s(30 + 700 - 140)
         self.btn_finish_select.move(btn_x, btn_y)
         self.btn_finish_select.setEnabled(False)
         self.btn_finish_select.clicked.connect(self.confirm_selection)
         
-        # 🔥 content_widget을 절대 위치로 배치
         content_widget.setGeometry(0, 0, int(self.new_w), int(self.new_h))
         
         main_layout.addWidget(content_widget)
@@ -703,14 +774,29 @@ class KioskMain(QMainWindow):
         self.load_select_page()
 
     def on_preview_clicked(self, x, y):
-        w = self.lbl_select_preview.width(); h = self.lbl_select_preview.height()
+        """미리보기 클릭 시 해당 슬롯 제거"""
+        w = self.lbl_select_preview.width()
+        h = self.lbl_select_preview.height()
+        
+        if w <= 0 or h <= 0:
+            return
+        
         k = f"{self.session_data.get('paper_type','full')}_{self.session_data.get('layout_key','v2')}"
         ld = FRAME_LAYOUTS.get(k, [])
-        sx = w / 2400; sy = h / 3600
+        
+        if not ld:
+            return
+        
+        sx = w / 2400
+        sy = h / 3600
+        
         for i, cd in enumerate(ld):
             cx, cy, cw, ch = int(cd['x']*sx), int(cd['y']*sy), int(cd['w']*sx), int(cd['h']*sy)
             if cx <= x <= cx + cw and cy <= y <= cy + ch:
-                if i < len(self.selected_indices): self.selected_indices[i] = None; self.load_select_page()
+                # 🔥 안전한 인덱스 접근
+                if i < len(self.selected_indices):
+                    self.selected_indices[i] = None
+                    self.load_select_page()
                 break
 
     def load_select_page(self):
@@ -727,46 +813,173 @@ class KioskMain(QMainWindow):
             if idx is not None:
                 selection_count[idx] = selection_count.get(idx, 0) + 1
         
+        # 프레임 레이아웃 정보 가져오기
+        paper = self.session_data.get('paper_type', 'full')
+        layout = self.session_data.get('layout_key', 'v2')
+        key = f"{paper}_{layout}"
+        layout_list = FRAME_LAYOUTS.get(key, [])
+        
+        # 구멍 비율 계산
+        if layout_list:
+            first_slot = layout_list[0]
+            hole_ratio = first_slot['w'] / first_slot['h']
+        else:
+            hole_ratio = 3 / 4
+        
         for i, b in enumerate(self.photo_buttons):
             if i < len(self.captured_files):
-                px = QPixmap(self.captured_files[i])
+                original_pix = QPixmap(self.captured_files[i])
                 
-                # 선택 횟수에 따라 표시
+                if original_pix.isNull():
+                    b.setIcon(QIcon())
+                    b.setEnabled(False)
+                    continue
+                
+                # 구멍 비율에 맞춰 이미지 크롭
+                img_w = original_pix.width()
+                img_h = original_pix.height()
+                img_ratio = img_w / img_h
+                
+                if img_ratio > hole_ratio:
+                    crop_h = img_h
+                    crop_w = int(crop_h * hole_ratio)
+                    crop_x = (img_w - crop_w) // 2
+                    crop_y = 0
+                else:
+                    crop_w = img_w
+                    crop_h = int(crop_w / hole_ratio)
+                    crop_x = 0
+                    crop_y = (img_h - crop_h) // 2
+                
+                cropped_pix = original_pix.copy(crop_x, crop_y, crop_w, crop_h)
+                
+                # 선택 횟수 오버레이
                 if i in selection_count:
                     count = selection_count[i]
-                    pt = QPainter(px)
-                    pt.fillRect(px.rect(), QColor(0, 0, 0, 100))
+                    pt = QPainter(cropped_pix)
+                    pt.fillRect(cropped_pix.rect(), QColor(0, 0, 0, 100))
                     pt.setPen(QPen(Qt.GlobalColor.green, self.s(40)))
                     pt.setFont(QFont("Arial", self.s(100), QFont.Weight.Bold))
-                    pt.drawText(px.rect(), Qt.AlignmentFlag.AlignCenter, str(count))
+                    pt.drawText(cropped_pix.rect(), Qt.AlignmentFlag.AlignCenter, str(count))
                     pt.end()
                 
-                b.setIcon(QIcon(px))
-                b.setIconSize(QSize(self.s(200), self.s(200)))  # 아이콘 크기 조정
+                b.setIcon(QIcon(cropped_pix))
+                b.setIconSize(QSize(self.s(250), self.s(250)))
                 b.setEnabled(True)
             else:
                 b.setIcon(QIcon())
                 b.setEnabled(False)
         
-        # 🔥 버튼 활성화 상태에 따른 스타일 변경
         is_complete = all(x is not None for x in self.selected_indices)
         self.btn_finish_select.setEnabled(is_complete)
 
-
     def draw_select_preview(self, photo_paths):
-        w, h = self.lbl_select_preview.width(), self.lbl_select_preview.height()
-        if w < 100: w, h = 400, 600
-        pm = QPixmap(w, h); pm.fill(Qt.GlobalColor.white); pt = QPainter(pm); pt.setRenderHint(QPainter.RenderHint.Antialiasing)
-        fp = self.session_data.get('frame_path'); lk = self.session_data.get('layout_key', 'v2'); k = f"{self.session_data.get('paper_type','full')}_{lk}"; ld = FRAME_LAYOUTS.get(k, [])
-        sx, sy = w/2400, h/3600
-        for i, cd in enumerate(ld):
-            x, y, cw, ch = int(cd['x']*sx), int(cd['y']*sy), int(cd['w']*sx), int(cd['h']*sy)
-            if photo_paths and i < len(photo_paths) and photo_paths[i]:
-                img = QPixmap(photo_paths[i]).scaled(cw, ch, Qt.AspectRatioMode.KeepAspectRatioByExpanding, Qt.TransformationMode.SmoothTransformation)
-                pt.drawPixmap(x, y, cw, ch, img, (img.width()-cw)//2, (img.height()-ch)//2, cw, ch)
-            else: pt.fillRect(x, y, cw, ch, QColor(220, 220, 220))
-        if fp and os.path.exists(fp): pt.drawPixmap(0, 0, QPixmap(fp).scaled(w, h, Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation))
-        pt.end(); self.lbl_select_preview.setPixmap(pm)
+        try:
+            # 프레임 정보 가져오기
+            paper_type = self.session_data.get('paper_type', 'full')
+            layout_key = self.session_data.get('layout_key', 'v2')
+            k = f"{paper_type}_{layout_key}"
+            ld = FRAME_LAYOUTS.get(k, [])
+            
+            if not ld:
+                print(f"[ERROR] 레이아웃 데이터 없음: {k}")
+                return
+            
+            # 🔥 프레임 원본 크기 및 방향 판단
+            # 레이아웃 키로 가로/세로 판단
+            if layout_key.startswith('h'):
+                # 가로형: 3600x2400
+                canvas_w, canvas_h = 3600, 2400
+                print(f"[DEBUG] 가로형 프레임 - 3600x2400")
+            else:
+                # 세로형: 2400x3600
+                canvas_w, canvas_h = 2400, 3600
+                print(f"[DEBUG] 세로형 프레임 - 2400x3600")
+            
+            frame_ratio = canvas_w / canvas_h
+            
+            # 라벨 크기
+            label_w = self.lbl_select_preview.width()
+            label_h = self.lbl_select_preview.height()
+            
+            if label_w <= 0 or label_h <= 0:
+                label_w, label_h = self.s(600), self.s(600)
+            
+            # 🔥 프레임 비율에 맞춰 그릴 크기 계산
+            label_ratio = label_w / label_h
+            
+            if label_ratio > frame_ratio:
+                # 라벨이 더 넓음 -> 높이 기준
+                draw_h = label_h
+                draw_w = int(draw_h * frame_ratio)
+            else:
+                # 라벨이 더 좁음 -> 너비 기준
+                draw_w = label_w
+                draw_h = int(draw_w / frame_ratio)
+            
+            if draw_w <= 0 or draw_h <= 0:
+                print("[ERROR] 잘못된 미리보기 크기")
+                return
+            
+            print(f"[DEBUG] 그릴 크기: {draw_w}x{draw_h}, 비율: {frame_ratio:.3f}")
+            
+            # 🔥 캔버스 생성
+            pm = QPixmap(draw_w, draw_h)
+            pm.fill(Qt.GlobalColor.white)
+            
+            pt = QPainter(pm)
+            pt.setRenderHint(QPainter.RenderHint.Antialiasing)
+            
+            fp = self.session_data.get('frame_path')
+            
+            # 🔥 스케일 비율
+            sx = draw_w / canvas_w
+            sy = draw_h / canvas_h
+            
+            # 사진 배치
+            for i, cd in enumerate(ld):
+                x, y, cw, ch = int(cd['x']*sx), int(cd['y']*sy), int(cd['w']*sx), int(cd['h']*sy)
+                
+                if photo_paths and i < len(photo_paths) and photo_paths[i]:
+                    if not os.path.exists(photo_paths[i]):
+                        pt.fillRect(x, y, cw, ch, QColor(220, 220, 220))
+                        continue
+                    
+                    img = QPixmap(photo_paths[i])
+                    if img.isNull():
+                        pt.fillRect(x, y, cw, ch, QColor(220, 220, 220))
+                        continue
+                        
+                    img = img.scaled(
+                        cw, ch, 
+                        Qt.AspectRatioMode.KeepAspectRatioByExpanding, 
+                        Qt.TransformationMode.SmoothTransformation
+                    )
+                    crop_x = (img.width() - cw) // 2
+                    crop_y = (img.height() - ch) // 2
+                    pt.drawPixmap(x, y, cw, ch, img, crop_x, crop_y, cw, ch)
+                else:
+                    pt.fillRect(x, y, cw, ch, QColor(220, 220, 220))
+            
+            # 프레임 오버레이
+            if fp and os.path.exists(fp):
+                frame_scaled = QPixmap(fp).scaled(
+                    draw_w, draw_h, 
+                    Qt.AspectRatioMode.IgnoreAspectRatio, 
+                    Qt.TransformationMode.SmoothTransformation
+                )
+                if not frame_scaled.isNull():
+                    pt.drawPixmap(0, 0, frame_scaled)
+            
+            pt.end()
+            
+            # 라벨에 표시
+            self.lbl_select_preview.setPixmap(pm)
+            
+        except Exception as e:
+            print(f"[ERROR] draw_select_preview 오류: {e}")
+            import traceback
+            traceback.print_exc()
 
     def create_filter_page(self):
         page = QWidget(); self.apply_window_style(page, "common"); main_layout = QHBoxLayout(page); main_layout.setContentsMargins(self.s(50), self.s(50), self.s(50), self.s(50))
@@ -883,14 +1096,37 @@ class KioskMain(QMainWindow):
         target_lbl = None
         if idx == 1: target_lbl = getattr(self, 'lbl_timer_frame', None)
         elif idx == 2: target_lbl = getattr(self, 'lbl_timer_payment', None)
+        elif idx == 4: target_lbl = getattr(self, 'lbl_timer_select', None)  # 🔥 추가
         if target_lbl: target_lbl.setText(str(self.remaining_time))
         if self.remaining_time <= 0: self.on_timeout()
 
     def on_timeout(self):
-        idx = self.stack.currentIndex(); self.timer.stop()
-        if idx == 4: self.auto_select_and_proceed()
-        elif idx == 5: self.start_printing()
-        else: self.show_page(0)
+        """타이머 만료 처리"""
+        idx = self.stack.currentIndex()
+        self.timer.stop()
+        
+        if idx == 4:  # 🔥 사진 선택 화면
+            # 미선택된 슬롯이 있으면 랜덤으로 채우기
+            if None in self.selected_indices:
+                print("[DEBUG] 타이머 만료 - 랜덤 선택 시작")
+                empty_slots = [i for i, x in enumerate(self.selected_indices) if x is None]
+                
+                if self.captured_files:
+                    for slot_idx in empty_slots:
+                        # 촬영된 사진 중 랜덤 선택
+                        random_photo = random.choice(range(len(self.captured_files)))
+                        self.selected_indices[slot_idx] = random_photo
+                    
+                    print(f"[DEBUG] 랜덤 선택 결과: {self.selected_indices}")
+            
+            # 선택 완료 처리
+            self.confirm_selection()
+        
+        elif idx == 5:  # 필터 화면
+            self.start_printing()
+        
+        else:  # 기타 화면
+            self.show_page(0)
 
     def cleanup_files(self):
         if not self.admin_settings.get('save_raw_files'):
@@ -899,20 +1135,21 @@ class KioskMain(QMainWindow):
                 except: pass
 
     def auto_select_and_proceed(self):
-        if not self.captured_files: self.show_page(0); return
-        if not self.selected_indices: self.selected_indices = [None] * self.session_data.get('target_count', 4)
-        empty = [i for i, x in enumerate(self.selected_indices) if x is None]
-        all_idx = list(range(len(self.captured_files)))
-        for i in empty: 
-            if all_idx: self.selected_indices[i] = random.choice(all_idx)
-        self.confirm_selection()
+        """타이머 만료 시 자동 선택 (on_timeout에서 처리)"""
+        pass
 
     def confirm_selection(self):
+        """사진 선택 완료 처리"""
         sp = [self.captured_files[i] for i in self.selected_indices if i is not None]
-        fp = self.session_data.get('frame_path'); l_key = self.session_data.get('layout_key'); fk = f"{self.session_data['paper_type']}_{l_key}"
+        fp = self.session_data.get('frame_path')
+        l_key = self.session_data.get('layout_key')
+        fk = f"{self.session_data['paper_type']}_{l_key}"
+        
+        # 최종 이미지 생성
         self.final_image_path = merge_4cut_vertical(sp, fp, fk)
-        if self.admin_settings.get('use_filter_page'): self.show_page(5) 
-        else: self.final_print_path = self.final_image_path; self.start_printing()
+        
+        # 🔥 필터 페이지로 이동 (조건 없이 무조건)
+        self.show_page(5)
 
     def start_printing(self):
         if not hasattr(self, 'final_print_path'): self.final_print_path = self.final_image_path
@@ -1190,38 +1427,58 @@ class KioskMain(QMainWindow):
         elif idx==2: self.load_payment_page()
         elif idx==3: self.cam_thread = VideoThread(); self.cam_thread.change_pixmap_signal.connect(self.update_image); self.cam_thread.start(); QTimer.singleShot(1000, self.start_shooting)
         elif idx==4:
+            print("[DEBUG] 사진 선택 페이지 진입")
+            print(f"[DEBUG] session_data: {self.session_data}")
+            
+            # 카메라 스레드 확인 및 종료
             if self.cam_thread:
+                print("[DEBUG] 잔여 카메라 스레드 발견 - 종료")
+                try:
+                    self.cam_thread.change_pixmap_signal.disconnect()
+                except:
+                    pass
                 self.cam_thread.stop()
+                self.cam_thread.wait(1000)
+                self.cam_thread = None
             
-            # 🔥 헤더 타이틀 업데이트 (컷수 반영)
-            if hasattr(self, 'page_select'):
-                old = self.stack.widget(4)
-                self.page_select = self.create_select_page()
-                self.stack.removeWidget(old)
-                self.stack.insertWidget(4, self.page_select)
-                self.stack.setCurrentIndex(4)
+            # 🔥 페이지를 매번 재생성 (session_data 반영)
+            old_widget = self.stack.widget(4)
+            if old_widget:
+                self.stack.removeWidget(old_widget)
+                old_widget.deleteLater()
             
+            self.page_select = self.create_select_page()
+            self.stack.insertWidget(4, self.page_select)
+            self.stack.setCurrentIndex(4)
+            
+            # 선택 인덱스 초기화
+            target_count = self.session_data.get('target_count', 4)
+            self.selected_indices = [None] * target_count
+            
+            # 페이지 로드
             self.load_select_page()
+            print("[DEBUG] 사진 선택 페이지 로드 완료")
         elif idx==5: self.final_print_path = self.final_image_path; self.result_label.setPixmap(QPixmap(self.final_image_path).scaled(800,1200, Qt.AspectRatioMode.KeepAspectRatio))
         elif idx==6:
             if hasattr(self, 'final_print_path') and os.path.exists(self.final_print_path):
                 pix = QPixmap(self.final_print_path); self.lbl_print_preview.setPixmap(pix.scaled(self.lbl_print_preview.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-        self.timer.stop(); t = 0
+        self.timer.stop()
+        t = 0
         if idx==1: t = self.admin_settings.get('timeout_frame', 60)
         elif idx==2: t = self.admin_settings.get('timeout_payment', 60)
-        elif idx==4: t = self.admin_settings.get('timeout_select', 60)
+        elif idx==4: t = 40
         elif idx==5: t = self.admin_settings.get('timeout_filter', 60)
         elif idx==6: t = self.admin_settings.get('timeout_print', 30)
+        
         if t > 0:
             self.remaining_time = t
-            # 🔥 즉시 화면에 표시
             if idx == 1 and hasattr(self, 'lbl_timer_frame'):
                 self.lbl_timer_frame.setText(str(t))
             elif idx == 2 and hasattr(self, 'lbl_timer_payment'):
                 self.lbl_timer_payment.setText(str(t))
-            # 🔥 그 다음 타이머 시작
+            elif idx == 4 and hasattr(self, 'lbl_timer_select'):
+                self.lbl_timer_select.setText(str(t))
             self.timer.start(1000)
-
     # -----------------------------------------------------------
     # [Shooting Logic] - 구현 완료된 촬영 로직
     # -----------------------------------------------------------
@@ -1288,10 +1545,35 @@ class KioskMain(QMainWindow):
         """다음 촬영 준비 (카운트다운 시작)"""
         # 목표 컷수를 다 채웠으면 선택 페이지로 이동
         if self.current_shot_idx > self.total_shots:
-            self.show_page(4) # 사진 선택 페이지
+            print("[DEBUG] 촬영 완료 - 정리 시작")
+            
+            # 🔥 1. 타이머 정리
+            if hasattr(self, 'shooting_timer') and self.shooting_timer:
+                self.shooting_timer.stop()
+                self.shooting_timer.deleteLater()
+                self.shooting_timer = None
+            
+            # 🔥 2. 카메라 스레드 완전 종료
+            if self.cam_thread:
+                print("[DEBUG] 카메라 스레드 종료 중...")
+                self.cam_thread.change_pixmap_signal.disconnect()  # 시그널 연결 해제
+                self.cam_thread.stop()
+                self.cam_thread.wait(2000)  # 최대 2초 대기
+                self.cam_thread.deleteLater()
+                self.cam_thread = None
+                print("[DEBUG] 카메라 스레드 종료 완료")
+            
+            # 🔥 3. 비디오 라벨 정리
+            if hasattr(self, 'video_label'):
+                self.video_label.clear()
+                self.video_label.setText("처리 중...")
+            
+            # 🔥 4. 메모리 정리 후 페이지 전환
+            QApplication.processEvents()  # 이벤트 처리
+            QTimer.singleShot(800, lambda: self.show_page(4))  # 0.8초 후 전환
             return
 
-        # 카운트다운 값 설정 (기본 3초)
+        # 카운트다운 값 설정
         self.countdown_val = self.admin_settings.get('shot_countdown', 3)
         self.current_countdown_display = self.countdown_val
         
@@ -1299,12 +1581,12 @@ class KioskMain(QMainWindow):
         if hasattr(self, 'lbl_shot_count'):
             self.lbl_shot_count.setText(f"{self.current_shot_idx}/{self.total_shots}")
         
-        # 카운트다운 타이머 생성 및 시작 (1초 간격)
+        # 카운트다운 타이머 생성 및 시작
         self.shooting_timer = QTimer(self)
         self.shooting_timer.timeout.connect(self.process_countdown)
         self.shooting_timer.start(1000)
         
-        # 즉시 1회 실행하여 화면에 숫자 바로 표시
+        # 즉시 1회 실행
         self.process_countdown()
 
     def process_countdown(self):
@@ -1341,7 +1623,17 @@ class KioskMain(QMainWindow):
         self.captured_files.append(filepath)
         print(f"[Save] {filepath}")
         
-        # 🔥 3. 사이드바 미리보기 업데이트 (비율 유지)
+        # 🔥 3. 현재 컷의 프레임 구멍 비율 가져오기
+        paper = self.session_data.get('paper_type', 'full')
+        layout = self.session_data.get('layout_key', 'v2')
+        key = f"{paper}_{layout}"
+        layout_list = FRAME_LAYOUTS.get(key, [])
+        
+        # 현재 촬영 컷의 구멍 정보
+        slot_idx = (self.current_shot_idx - 1) % len(layout_list) if layout_list else 0
+        slot_info = layout_list[slot_idx] if layout_list else None
+        
+        # 🔥 4. 사이드바 미리보기 업데이트 (구멍 비율에 맞춰)
         all_previews = self.left_previews + self.right_previews
         preview_idx = self.current_shot_idx - 1
         
@@ -1349,15 +1641,71 @@ class KioskMain(QMainWindow):
             lbl = all_previews[preview_idx]
             pix = QPixmap(filepath)
             
-            # 🔥 라벨 크기에 맞춰 비율 유지하며 스케일
-            scaled_pix = pix.scaled(
-                lbl.size(),
-                Qt.AspectRatioMode.KeepAspectRatio,  # 비율 유지
-                Qt.TransformationMode.SmoothTransformation
-            )
-            lbl.setPixmap(scaled_pix)
+            if slot_info and not pix.isNull():
+                # 🔥 구멍 비율 계산
+                hole_w = slot_info['w']
+                hole_h = slot_info['h']
+                hole_ratio = hole_w / hole_h
+                
+                # 🔥 라벨 크기 가져오기
+                label_w = lbl.width()
+                label_h = lbl.height()
+                
+                if label_w <= 0 or label_h <= 0:
+                    # 아직 렌더링 안됨 - 기본값 사용
+                    label_w = self.s(170)  # 230 - 60(여백)
+                    label_h = self.s(170)
+                
+                label_ratio = label_w / label_h
+                
+                # 🔥 구멍 비율에 맞춰 표시 크기 계산
+                if label_ratio > hole_ratio:
+                    # 라벨이 더 넓음 -> 높이 기준
+                    display_h = label_h
+                    display_w = int(display_h * hole_ratio)
+                else:
+                    # 라벨이 더 좁음 -> 너비 기준
+                    display_w = label_w
+                    display_h = int(display_w / hole_ratio)
+                
+                # 🔥 이미지를 구멍 비율로 크롭
+                img_w = pix.width()
+                img_h = pix.height()
+                img_ratio = img_w / img_h
+                
+                if img_ratio > hole_ratio:
+                    # 이미지가 더 넓음 -> 좌우 자르기
+                    crop_h = img_h
+                    crop_w = int(crop_h * hole_ratio)
+                    crop_x = (img_w - crop_w) // 2
+                    crop_y = 0
+                else:
+                    # 이미지가 더 좁음 -> 위아래 자르기
+                    crop_w = img_w
+                    crop_h = int(crop_w / hole_ratio)
+                    crop_x = 0
+                    crop_y = (img_h - crop_h) // 2
+                
+                # 크롭 후 스케일
+                cropped = pix.copy(crop_x, crop_y, crop_w, crop_h)
+                scaled = cropped.scaled(
+                    display_w, display_h,
+                    Qt.AspectRatioMode.IgnoreAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation
+                )
+                
+                lbl.setPixmap(scaled)
+                print(f"[DEBUG] 미리보기 {preview_idx}: 구멍비율 {hole_ratio:.3f} ({hole_w}x{hole_h}), 표시크기 {display_w}x{display_h}")
+            else:
+                # 구멍 정보 없으면 기본 표시
+                scaled_pix = pix.scaled(
+                    lbl.size(),
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation
+                )
+                lbl.setPixmap(scaled_pix)
 
-        # 4. 다음 컷으로 진행
+        # 5. 다음 컷으로 진행
         self.current_shot_idx += 1
         self.current_countdown_display = 0
         QTimer.singleShot(1000, self.prepare_next_shot)
