@@ -358,7 +358,7 @@ class KioskMain(QMainWindow):
         self.timer.timeout.connect(self.process_timer_tick)
 
     # -----------------------------------------------------------
-    # [Pages]
+    # [Pages test]
     # -----------------------------------------------------------
     def create_start_page(self):
         page = QWidget(); self.apply_window_style(page, "intro")
@@ -523,7 +523,7 @@ class KioskMain(QMainWindow):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
         
-        # 🔥 헤더: 1920x130px 그라데이션
+        # 헤더 (기존 코드 동일)
         self.header_widget = QWidget()
         self.header_widget.setFixedHeight(self.s(130))
         self.header_widget.setStyleSheet("""
@@ -535,7 +535,6 @@ class KioskMain(QMainWindow):
             }
         """)
         
-        # 🔥 타이머 (중앙)
         self.lbl_timer_header = QLabel("")
         self.lbl_timer_header.setParent(self.header_widget)
         self.lbl_timer_header.setGeometry(0, 0, int(self.new_w), self.s(130))
@@ -548,7 +547,6 @@ class KioskMain(QMainWindow):
             background: transparent;
         """)
         
-        # 🔥 촬영 컷수 (우측 88px)
         self.lbl_shot_count = QLabel("1/8")
         self.lbl_shot_count.setParent(self.header_widget)
         shot_count_width = self.s(200)
@@ -576,19 +574,14 @@ class KioskMain(QMainWindow):
         
         side_w = self.s(230)
         
-        # 좌측 사이드바
+        # 🔥 좌측 사이드바 (여백 30px)
         self.left_sidebar = QWidget()
         self.left_sidebar.setFixedWidth(side_w)
         self.left_sidebar.setStyleSheet("background-color: #1E1E1E;")
-        l_layout = QVBoxLayout(self.left_sidebar)
-        l_layout.setContentsMargins(self.s(20), self.s(20), self.s(20), self.s(20))
+        self.left_layout = QVBoxLayout(self.left_sidebar)
+        self.left_layout.setContentsMargins(self.s(30), self.s(30), self.s(30), self.s(30))
+        self.left_layout.setSpacing(self.s(15))  # 미리보기 간격
         self.left_previews = []
-        for _ in range(6):
-            l = QLabel()
-            l.setStyleSheet(f"background-color: #333; border-radius: {self.s(10)}px;")
-            l.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-            l_layout.addWidget(l)
-            self.left_previews.append(l)
         
         # 중앙 비디오
         self.video_container = QWidget()
@@ -600,19 +593,14 @@ class KioskMain(QMainWindow):
         self.video_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         v_layout.addWidget(self.video_label)
         
-        # 우측 사이드바
+        # 🔥 우측 사이드바 (여백 30px)
         self.right_sidebar = QWidget()
         self.right_sidebar.setFixedWidth(side_w)
         self.right_sidebar.setStyleSheet("background-color: #1E1E1E;")
-        r_layout = QVBoxLayout(self.right_sidebar)
-        r_layout.setContentsMargins(self.s(20), self.s(20), self.s(20), self.s(20))
+        self.right_layout = QVBoxLayout(self.right_sidebar)
+        self.right_layout.setContentsMargins(self.s(30), self.s(30), self.s(30), self.s(30))
+        self.right_layout.setSpacing(self.s(15))  # 미리보기 간격
         self.right_previews = []
-        for _ in range(6):
-            l = QLabel()
-            l.setStyleSheet(f"background-color: #333; border-radius: {self.s(10)}px;")
-            l.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-            r_layout.addWidget(l)
-            self.right_previews.append(l)
         
         content_layout.addWidget(self.left_sidebar)
         content_layout.addWidget(self.video_container, stretch=1)
@@ -623,37 +611,96 @@ class KioskMain(QMainWindow):
         return page
 
     def create_select_page(self):
-        page = QWidget(); self.apply_window_style(page, "common")
-        main_layout = QVBoxLayout(page); main_layout.setContentsMargins(self.s(40), self.s(40), self.s(40), self.s(40))
-        lbl = QLabel("사진을 터치해서 골라주세요"); lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl.setStyleSheet(f"font-size: {self.s(55)}px; font-weight: 600;")
-        main_layout.addWidget(lbl)
-        content_layout = QHBoxLayout()
-        self.photo_grid = QGridLayout()
-        self.photo_buttons = []
-        for i in range(12):
-            b = QPushButton(); b.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding); b.clicked.connect(lambda _, x=i: self.on_source_click(x))
-            self.photo_buttons.append(b); self.photo_grid.addWidget(b, i//4, i%4)
-        grid_container = QWidget(); grid_container.setLayout(self.photo_grid)
-        content_layout.addWidget(grid_container, stretch=3)
-        right_panel = QVBoxLayout()
-        self.lbl_select_preview = ClickableLabel()
-        self.lbl_select_preview.setAlignment(Qt.AlignmentFlag.AlignCenter); self.lbl_select_preview.setStyleSheet(f"background: white; border: {self.s(3)}px dashed #999;")
+        page = QWidget()
+        self.apply_window_style(page, "common")
+        
+        main_layout = QVBoxLayout(page)
+        main_layout.setContentsMargins(0, 0, 0, self.s(50))
+        main_layout.setSpacing(self.s(20))
+        
+        # 헤더
+        target_count = self.session_data.get('target_count', 4)
+        self.lbl_timer_select = self.create_header(
+            main_layout,
+            "Select Your Picture",
+            f"총 {target_count}컷의 사진을 선택해주세요",
+            True,
+            lambda: self.show_page(3)
+        )
+        
+        # 🔥 메인 컨텐츠 영역
+        content_widget = QWidget()
+        content_widget.setStyleSheet("background: transparent;")
+        
+        # 🔥 좌측: 프레임 미리보기 (절대 위치)
+        preview_bg = QWidget(content_widget)
+        preview_bg.setFixedSize(self.s(700), self.s(700))
+        preview_bg.setStyleSheet(f"""
+            background-color: #ECECEC;
+            border-radius: {self.s(12)}px;
+        """)
+        # 뒤로가기 버튼과 왼쪽 정렬 (x: 110), 버튼 아래 30px
+        preview_bg.move(self.s(110), self.s(30))
+        
+        # 미리보기 라벨 (배경 안에 50px 여백)
+        self.lbl_select_preview = ClickableLabel(preview_bg)
+        self.lbl_select_preview.setGeometry(self.s(50), self.s(50), self.s(600), self.s(600))
+        self.lbl_select_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_select_preview.setStyleSheet("background: white; border: none;")
         self.lbl_select_preview.clicked.connect(self.on_preview_clicked)
-        self.btn_finish_select = QPushButton("선택 완료")
-        self.btn_finish_select.setFixedHeight(self.s(100))
-        self.btn_finish_select.setStyleSheet(f"QPushButton {{ background-color: #eee; color: black; font-size: {self.s(40)}px; font-weight: 600; border-radius: {self.s(20)}px; }} QPushButton:enabled {{ background-color: #ffccdd; }}")
-        self.btn_finish_select.setEnabled(False); self.btn_finish_select.clicked.connect(self.confirm_selection)
-        right_panel.addWidget(self.lbl_select_preview, stretch=1); right_panel.addWidget(self.btn_finish_select)
-        right_widget = QWidget(); right_widget.setLayout(right_panel)
-        content_layout.addWidget(right_widget, stretch=2)
-        main_layout.addLayout(content_layout)
+        
+        # 🔥 우측: 촬영 사진 그리드
+        grid_container = QWidget(content_widget)
+        grid_layout = QVBoxLayout(grid_container)
+        grid_layout.setContentsMargins(0, 0, 0, 0)
+        grid_layout.setSpacing(self.s(20))
+        
+        # 그리드 위치 계산 (우측 정렬)
+        grid_x = self.s(110 + 700 + 60)  # 좌측여백 + 미리보기 + 간격
+        grid_width = int(self.new_w) - grid_x - self.s(110)  # 우측 여백
+        grid_container.setGeometry(grid_x, self.s(30), grid_width, self.s(700))
+        
+        self.photo_grid = QGridLayout()
+        self.photo_grid.setSpacing(self.s(15))
+        self.photo_buttons = []
+        
+        for i in range(12):
+            b = QPushButton()
+            b.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+            b.clicked.connect(lambda checked=False, x=i: self.on_source_click(x))
+            self.photo_buttons.append(b)
+            self.photo_grid.addWidget(b, i//4, i%4)
+        
+        grid_layout.addLayout(self.photo_grid)
+        
+        # 🔥 선택 완료 버튼 (타이머와 우측 정렬, 절대 위치)
+        self.btn_finish_select = GradientButton("선택 완료", "Complete", content_widget, self.s)
+        # 타이머 위치: 우측 110 + 200(타이머 너비)
+        # 버튼을 타이머 바로 아래 배치
+        btn_x = int(self.new_w) - self.s(110) - self.s(350)  # 버튼 너비 350
+        btn_y = self.s(30 + 700 + 20)  # 미리보기 하단 + 간격
+        self.btn_finish_select.move(btn_x, btn_y)
+        self.btn_finish_select.setEnabled(False)
+        self.btn_finish_select.clicked.connect(self.confirm_selection)
+        
+        # 🔥 content_widget을 절대 위치로 배치
+        content_widget.setGeometry(0, 0, int(self.new_w), int(self.new_h))
+        
+        main_layout.addWidget(content_widget)
+        
         return page
 
     def on_source_click(self, i):
-        if i in self.selected_indices: return
-        if None in self.selected_indices:
-            idx = self.selected_indices.index(None); self.selected_indices[idx] = i; self.load_select_page()
+        """사진 그리드 클릭 처리 (중복 선택 가능)"""
+        # 🔥 선택 가능한 빈 슬롯이 있는지 확인
+        if None not in self.selected_indices:
+            # 모든 슬롯이 차있으면 무시
+            return
+        
+        # 🔥 첫 번째 빈 슬롯에 추가
+        idx = self.selected_indices.index(None)
+        self.selected_indices[idx] = i
+        self.load_select_page()
 
     def on_preview_clicked(self, x, y):
         w = self.lbl_select_preview.width(); h = self.lbl_select_preview.height()
@@ -668,17 +715,43 @@ class KioskMain(QMainWindow):
 
     def load_select_page(self):
         t = self.session_data.get('target_count', 4)
-        if len(self.selected_indices) != t: self.selected_indices = [None] * t
+        if len(self.selected_indices) != t:
+            self.selected_indices = [None] * t
+        
         sp = [self.captured_files[i] if i is not None and i < len(self.captured_files) else None for i in self.selected_indices]
         self.draw_select_preview(sp)
+        
+        # 중복 선택 카운트
+        selection_count = {}
+        for idx in self.selected_indices:
+            if idx is not None:
+                selection_count[idx] = selection_count.get(idx, 0) + 1
+        
         for i, b in enumerate(self.photo_buttons):
             if i < len(self.captured_files):
                 px = QPixmap(self.captured_files[i])
-                if i in self.selected_indices:
-                    pt = QPainter(px); pt.fillRect(px.rect(), QColor(0, 0, 0, 100)); pt.setPen(QPen(Qt.GlobalColor.green, self.s(40))); pt.setFont(QFont("Arial", self.s(100), QFont.Weight.Bold)); pt.drawText(px.rect(), Qt.AlignmentFlag.AlignCenter, "V"); pt.end()
-                b.setIcon(QIcon(px)); b.setEnabled(True)
-            else: b.setIcon(QIcon()); b.setEnabled(False)
-        self.btn_finish_select.setEnabled(all(x is not None for x in self.selected_indices))
+                
+                # 선택 횟수에 따라 표시
+                if i in selection_count:
+                    count = selection_count[i]
+                    pt = QPainter(px)
+                    pt.fillRect(px.rect(), QColor(0, 0, 0, 100))
+                    pt.setPen(QPen(Qt.GlobalColor.green, self.s(40)))
+                    pt.setFont(QFont("Arial", self.s(100), QFont.Weight.Bold))
+                    pt.drawText(px.rect(), Qt.AlignmentFlag.AlignCenter, str(count))
+                    pt.end()
+                
+                b.setIcon(QIcon(px))
+                b.setIconSize(QSize(self.s(200), self.s(200)))  # 아이콘 크기 조정
+                b.setEnabled(True)
+            else:
+                b.setIcon(QIcon())
+                b.setEnabled(False)
+        
+        # 🔥 버튼 활성화 상태에 따른 스타일 변경
+        is_complete = all(x is not None for x in self.selected_indices)
+        self.btn_finish_select.setEnabled(is_complete)
+
 
     def draw_select_preview(self, photo_paths):
         w, h = self.lbl_select_preview.width(), self.lbl_select_preview.height()
@@ -1116,8 +1189,18 @@ class KioskMain(QMainWindow):
         if idx==1: self.load_frame_options() 
         elif idx==2: self.load_payment_page()
         elif idx==3: self.cam_thread = VideoThread(); self.cam_thread.change_pixmap_signal.connect(self.update_image); self.cam_thread.start(); QTimer.singleShot(1000, self.start_shooting)
-        elif idx==4: 
-            if self.cam_thread: self.cam_thread.stop()
+        elif idx==4:
+            if self.cam_thread:
+                self.cam_thread.stop()
+            
+            # 🔥 헤더 타이틀 업데이트 (컷수 반영)
+            if hasattr(self, 'page_select'):
+                old = self.stack.widget(4)
+                self.page_select = self.create_select_page()
+                self.stack.removeWidget(old)
+                self.stack.insertWidget(4, self.page_select)
+                self.stack.setCurrentIndex(4)
+            
             self.load_select_page()
         elif idx==5: self.final_print_path = self.final_image_path; self.result_label.setPixmap(QPixmap(self.final_image_path).scaled(800,1200, Qt.AspectRatioMode.KeepAspectRatio))
         elif idx==6:
@@ -1150,16 +1233,55 @@ class KioskMain(QMainWindow):
         self.current_shot_idx = 1
         self.captured_files = []
         self.total_shots = self.admin_settings.get('total_shoot_count', 8)
-        self.current_countdown_display = 0 # 화면 표시용 숫자 초기화
+        self.current_countdown_display = 0
         
-        # 미리보기창 초기화
-        all_previews = self.left_previews + self.right_previews
-        for lbl in all_previews:
-            lbl.clear()
-            lbl.setStyleSheet(f"background-color: #333; border-radius: {self.s(10)}px;")
-
+        # 🔥 미리보기창 동적 생성
+        # 기존 위젯 제거
+        for lbl in self.left_previews + self.right_previews:
+            lbl.deleteLater()
+        self.left_previews.clear()
+        self.right_previews.clear()
+        
+        # 🔥 좌측 우측 배분: 좌측 우선 (4개까지), 나머지는 우측
+        left_count = min(self.total_shots, 4)  # 좌측 최대 4개
+        right_count = max(0, self.total_shots - 4)  # 나머지는 우측
+        
+        # 🔥 공통 스타일 (회색 배경 박스)
+        preview_style = f"""
+            background-color: #333; 
+            border-radius: {self.s(10)}px;
+            border: none;
+        """
+        
+        # 🔥 좌측 미리보기 생성
+        for i in range(left_count):
+            lbl = QLabel()
+            lbl.setStyleSheet(preview_style)
+            lbl.setScaledContents(False)  # 비율 유지
+            lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+            self.left_layout.addWidget(lbl)
+            self.left_previews.append(lbl)
+        
+        # 좌측 여백
+        if left_count < 4:
+            self.left_layout.addStretch(4 - left_count)
+        
+        # 🔥 우측 미리보기 생성
+        for i in range(right_count):
+            lbl = QLabel()
+            lbl.setStyleSheet(preview_style)
+            lbl.setScaledContents(False)
+            lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+            self.right_layout.addWidget(lbl)
+            self.right_previews.append(lbl)
+        
+        # 우측 여백
+        if right_count < 4:
+            self.right_layout.addStretch(4 - right_count)
+        
         # 첫 번째 촬영 준비
-        # 카메라 스레드가 켜지는 시간을 살짝 벌어주기 위해 1초 뒤 시작
         QTimer.singleShot(1000, self.prepare_next_shot)
 
     def prepare_next_shot(self):
@@ -1219,19 +1341,25 @@ class KioskMain(QMainWindow):
         self.captured_files.append(filepath)
         print(f"[Save] {filepath}")
         
-        # 3. 사이드바 미리보기 업데이트
+        # 🔥 3. 사이드바 미리보기 업데이트 (비율 유지)
         all_previews = self.left_previews + self.right_previews
-        preview_idx = self.current_shot_idx - 1 # 리스트 인덱스는 0부터
+        preview_idx = self.current_shot_idx - 1
         
         if preview_idx < len(all_previews):
             lbl = all_previews[preview_idx]
             pix = QPixmap(filepath)
-            lbl.setPixmap(pix.scaled(lbl.size(), Qt.AspectRatioMode.KeepAspectRatioByExpanding, Qt.TransformationMode.SmoothTransformation))
-            lbl.setStyleSheet(f"border: {self.s(4)}px solid #ff007f; border-radius: {self.s(10)}px;")
+            
+            # 🔥 라벨 크기에 맞춰 비율 유지하며 스케일
+            scaled_pix = pix.scaled(
+                lbl.size(),
+                Qt.AspectRatioMode.KeepAspectRatio,  # 비율 유지
+                Qt.TransformationMode.SmoothTransformation
+            )
+            lbl.setPixmap(scaled_pix)
 
-        # 4. 다음 컷으로 진행 (잠시 대기 후)
+        # 4. 다음 컷으로 진행
         self.current_shot_idx += 1
-        self.current_countdown_display = 0 # 숫자 지우기
+        self.current_countdown_display = 0
         QTimer.singleShot(1000, self.prepare_next_shot)
 
 if __name__ == "__main__":
@@ -1239,3 +1367,21 @@ if __name__ == "__main__":
     kiosk = KioskMain()
     kiosk.show()
     sys.exit(app.exec())
+
+
+def on_source_click(self, i):
+    """사진 그리드 클릭 처리 (중복 선택 가능)"""
+    print(f"[DEBUG] 클릭된 사진 인덱스: {i}")  # 🔥 디버그 출력
+    print(f"[DEBUG] 현재 선택 상태: {self.selected_indices}")  # 🔥 디버그 출력
+    
+    # 빈 슬롯 찾기
+    if None not in self.selected_indices:
+        print("[DEBUG] 모든 슬롯이 차있음")
+        return
+    
+    # 첫 번째 빈 슬롯에 추가
+    idx = self.selected_indices.index(None)
+    self.selected_indices[idx] = i
+    print(f"[DEBUG] 업데이트 후: {self.selected_indices}")  # 🔥 디버그 출력
+    
+    self.load_select_page()
