@@ -1,0 +1,15 @@
+# 가상환경 폴더 제외
+.venv/
+
+# Mac 시스템 파일 제외
+.DS_Store
+
+# 파이썬 캐시 파일 제외
+__pycache__/
+*.pyc
+
+# 촬영된 원본 사진 및 결과물 제외 (코드만 저장하기 위함)
+data/original/*
+data/results/*
+!data/original/.gitkeep
+!data/results/.gitkeep
