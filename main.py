@@ -1013,43 +1013,128 @@ class KioskMain(QMainWindow):
         return page
 
     def create_admin_page(self):
-        page = QWidget(); page.setStyleSheet("background: #F0F0F0;")
-        layout = QVBoxLayout(page); layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl = QLabel("🔧 관리자 설정"); lbl.setStyleSheet(f"font-size: {self.s(80)}px; font-weight: 600; color: #333;")
-        layout.addWidget(lbl)
-        scroll = QScrollArea(); scroll.setWidgetResizable(True); scroll.setFixedSize(self.s(1600), self.s(800))
-        panel = QWidget(); panel.setStyleSheet("background: white; border-radius: 20px;")
-        self.admin_layout = QVBoxLayout(panel); self.admin_layout.setContentsMargins(40,40,40,40); self.admin_layout.setSpacing(15)
+        page = QWidget()
+        page.setStyleSheet("background: #F0F0F0;")
+        layout = QVBoxLayout(page)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
+        lbl = QLabel("🔧 관리자 설정")
+        lbl.setStyleSheet(f"font-size: {self.s(80)}px; font-weight: 600; color: #333;")
+        layout.addWidget(lbl)
+        
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFixedSize(self.s(1600), self.s(800))
+        
+        panel = QWidget()
+        panel.setStyleSheet("background: white; border-radius: 20px;")
+        self.admin_layout = QVBoxLayout(panel)
+        self.admin_layout.setContentsMargins(40, 40, 40, 40)
+        self.admin_layout.setSpacing(15)
+        
+        # 🔥 add_row 함수 (올바른 위치 - 최상위)
         def add_row(t, k, min_v, max_v, step=1):
-            r = QWidget(); h = QHBoxLayout(r); 
-            l = QLabel(t); l.setFixedWidth(self.s(400)); l.setStyleSheet(f"font-size: {self.s(32)}px; font-weight: 600; color: black;")
-            v = QLabel(str(self.admin_settings.get(k))); v.setFixedWidth(self.s(100)); v.setStyleSheet(f"font-size: {self.s(32)}px; color: blue;")
-            b1 = QPushButton("-"); b1.setFixedSize(self.s(60),self.s(60))
-            b2 = QPushButton("+"); b2.setFixedSize(self.s(60),self.s(60))
+            r = QWidget()
+            h = QHBoxLayout(r)
+            h.setSpacing(self.s(10))
+            h.setContentsMargins(0, 0, 0, 0)
+            
+            l = QLabel(t)
+            l.setFixedWidth(self.s(400))
+            l.setStyleSheet(f"font-size: {self.s(32)}px; font-weight: 600; color: black;")
+            
+            v = QLabel(str(self.admin_settings.get(k)))
+            v.setFixedWidth(self.s(100))
+            v.setStyleSheet(f"font-size: {self.s(32)}px; color: blue; background: transparent;")
+            v.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            
+            b1 = QPushButton("-")
+            b1.setFixedSize(self.s(60), self.s(60))
+            b1.setStyleSheet(f"""
+                QPushButton {{
+                    font-size: {self.s(36)}px;
+                    font-weight: bold;
+                    background-color: #E0E0E0;
+                    border: 2px solid #999;
+                    border-radius: {self.s(10)}px;
+                    color: black;
+                }}
+                QPushButton:hover {{
+                    background-color: #D0D0D0;
+                }}
+                QPushButton:pressed {{
+                    background-color: #C0C0C0;
+                }}
+            """)
+            
+            b2 = QPushButton("+")
+            b2.setFixedSize(self.s(60), self.s(60))
+            b2.setStyleSheet(f"""
+                QPushButton {{
+                    font-size: {self.s(36)}px;
+                    font-weight: bold;
+                    background-color: #E0E0E0;
+                    border: 2px solid #999;
+                    border-radius: {self.s(10)}px;
+                    color: black;
+                }}
+                QPushButton:hover {{
+                    background-color: #D0D0D0;
+                }}
+                QPushButton:pressed {{
+                    background-color: #C0C0C0;
+                }}
+            """)
+            
             def upd(d):
                 current_val = int(v.text())
-                new_val = current_val + d
+                new_val = current_val + (d * step)
                 if min_v <= new_val <= max_v:
                     v.setText(str(new_val))
                     self.admin_settings[k] = new_val
-            b1.clicked.connect(lambda: upd(-step))
-            b2.clicked.connect(lambda: upd(step))
-            h.addWidget(l); h.addWidget(b1); h.addWidget(v); h.addWidget(b2)
+                    print(f"[DEBUG] {k} 변경: {new_val}")
+            
+            b1.clicked.connect(lambda: upd(-1))
+            b2.clicked.connect(lambda: upd(1))
+            
+            h.addWidget(l)
+            h.addWidget(b1)
+            h.addWidget(v)
+            h.addWidget(b2)
+            h.addStretch()
+            
             self.admin_layout.addWidget(r)
         
         def add_tog(t, k):
-            r = QWidget(); h = QHBoxLayout(r); l = QLabel(t); l.setFixedWidth(self.s(400)); l.setStyleSheet(f"font-size: {self.s(32)}px; font-weight: 600; color: black;")
-            s = self.admin_settings.get(k); b = QPushButton("ON" if s else "OFF"); b.setFixedSize(self.s(150), self.s(60)); 
+            r = QWidget()
+            h = QHBoxLayout(r)
+            l = QLabel(t)
+            l.setFixedWidth(self.s(400))
+            l.setStyleSheet(f"font-size: {self.s(32)}px; font-weight: 600; color: black;")
+            s = self.admin_settings.get(k)
+            b = QPushButton("ON" if s else "OFF")
+            b.setFixedSize(self.s(150), self.s(60))
             b.setStyleSheet(f"font-size: {self.s(30)}px; color: white; background-color: {'#4CAF50' if s else '#F44336'}; border-radius: 10px;")
-            def tog(): 
-                n = 0 if b.text()=="ON" else 1; self.admin_settings[k]=n
-                b.setText("ON" if n else "OFF"); b.setStyleSheet(f"font-size: {self.s(30)}px; color: white; background-color: {'#4CAF50' if n else '#F44336'}; border-radius: 10px;")
-            b.clicked.connect(tog); h.addWidget(l); h.addWidget(b); self.admin_layout.addWidget(r)
+            
+            def tog():
+                n = 0 if b.text() == "ON" else 1
+                self.admin_settings[k] = n
+                b.setText("ON" if n else "OFF")
+                b.setStyleSheet(f"font-size: {self.s(30)}px; color: white; background-color: {'#4CAF50' if n else '#F44336'}; border-radius: 10px;")
+            
+            b.clicked.connect(tog)
+            h.addWidget(l)
+            h.addWidget(b)
+            self.admin_layout.addWidget(r)
 
         def add_cmb(t, k, opts):
-            r = QWidget(); h = QHBoxLayout(r); l = QLabel(t); l.setFixedWidth(self.s(400)); l.setStyleSheet(f"font-size: {self.s(32)}px; font-weight: 600; color: black;")
-            c = QComboBox(); c.setFixedHeight(self.s(60))
+            r = QWidget()
+            h = QHBoxLayout(r)
+            l = QLabel(t)
+            l.setFixedWidth(self.s(400))
+            l.setStyleSheet(f"font-size: {self.s(32)}px; font-weight: 600; color: black;")
+            c = QComboBox()
+            c.setFixedHeight(self.s(60))
             c.setStyleSheet(f"""
                 QComboBox {{
                     font-size: {self.s(30)}px;
@@ -1069,25 +1154,57 @@ class KioskMain(QMainWindow):
                 }}
             """)
             
-            for kv, vv in opts.items(): c.addItem(vv, kv)
-            idx = c.findData(self.admin_settings.get(k)); 
-            if idx >= 0: c.setCurrentIndex(idx)
-            c.currentIndexChanged.connect(lambda i: self.admin_settings.update({k: c.itemData(i)})); h.addWidget(l); h.addWidget(c); self.admin_layout.addWidget(r)
+            for kv, vv in opts.items():
+                c.addItem(vv, kv)
+            idx = c.findData(self.admin_settings.get(k))
+            if idx >= 0:
+                c.setCurrentIndex(idx)
+            c.currentIndexChanged.connect(lambda i: self.admin_settings.update({k: c.itemData(i)}))
+            h.addWidget(l)
+            h.addWidget(c)
+            self.admin_layout.addWidget(r)
 
-        l1 = QLabel("기본 설정"); l1.setStyleSheet(f"font-size: {self.s(40)}px; font-weight: 600; margin-top: 20px; color: black;"); self.admin_layout.addWidget(l1)
+        # 🔥 기본 설정
+        l1 = QLabel("기본 설정")
+        l1.setStyleSheet(f"font-size: {self.s(40)}px; font-weight: 600; margin-top: 20px; color: black;")
+        self.admin_layout.addWidget(l1)
         add_cmb("결제 방식", "payment_mode", {1: "유상결제 (카드/현금/쿠폰)", 0: "무상결제 (이벤트)", 2: "코인결제 (코인기)"})
         add_row("코인 단가", "coin_price_per_sheet", 1, 10)
-        l2 = QLabel("가격 설정"); l2.setStyleSheet(f"font-size: {self.s(40)}px; font-weight: 600; margin-top: 20px; color: black;"); self.admin_layout.addWidget(l2)
-        add_row("Full Price", "price_full", 0, 20000, 500); add_row("Half Price", "price_half", 0, 20000, 500)
-        add_tog("카드 결제", "use_card"); add_tog("현금 결제", "use_cash"); add_tog("쿠폰 결제", "use_coupon"); add_tog("다크 모드", "use_dark_mode")
-        l3 = QLabel("출력 수량 설정 (2의 배수)"); l3.setStyleSheet(f"font-size: {self.s(40)}px; font-weight: 600; margin-top: 20px; color: black;"); self.admin_layout.addWidget(l3)
-        add_row("최소 수량 (Min)", "print_count_min", 2, 12, step=2); add_row("최대 수량 (Max)", "print_count_max", 2, 12, step=2)
-        l4 = QLabel("촬영 설정"); l4.setStyleSheet(f"font-size: {self.s(40)}px; font-weight: 600; margin-top: 20px; color: black;"); self.admin_layout.addWidget(l4)
-        add_row("총 촬영 컷수", "total_shoot_count", 1, 12); add_row("촬영 타이머 (초)", "shot_countdown", 1, 10)
         
-        scroll.setWidget(panel); layout.addWidget(scroll)
-        ex = QPushButton("나가기 (저장)"); ex.setFixedSize(self.s(500), self.s(100)); ex.setStyleSheet(f"font-size: {self.s(45)}px; background: #ff007f; color: white; border-radius: 20px;")
-        ex.clicked.connect(lambda: self.show_page(0)); layout.addWidget(ex)
+        # 🔥 가격 설정
+        l2 = QLabel("가격 설정")
+        l2.setStyleSheet(f"font-size: {self.s(40)}px; font-weight: 600; margin-top: 20px; color: black;")
+        self.admin_layout.addWidget(l2)
+        add_row("Full Price", "price_full", 0, 20000, 500)
+        add_row("Half Price", "price_half", 0, 20000, 500)
+        add_tog("카드 결제", "use_card")
+        add_tog("현금 결제", "use_cash")
+        add_tog("쿠폰 결제", "use_coupon")
+        add_tog("다크 모드", "use_dark_mode")
+        
+        # 🔥 출력 수량 설정
+        l3 = QLabel("출력 수량 설정 (2의 배수)")
+        l3.setStyleSheet(f"font-size: {self.s(40)}px; font-weight: 600; margin-top: 20px; color: black;")
+        self.admin_layout.addWidget(l3)
+        add_row("최소 수량 (Min)", "print_count_min", 2, 12, step=2)
+        add_row("최대 수량 (Max)", "print_count_max", 2, 12, step=2)
+        
+        # 🔥 촬영 설정
+        l4 = QLabel("촬영 설정")
+        l4.setStyleSheet(f"font-size: {self.s(40)}px; font-weight: 600; margin-top: 20px; color: black;")
+        self.admin_layout.addWidget(l4)
+        add_row("총 촬영 컷수", "total_shoot_count", 1, 12, step=1)
+        add_row("촬영 타이머 (초)", "shot_countdown", 1, 10, step=1)
+        
+        scroll.setWidget(panel)
+        layout.addWidget(scroll)
+        
+        ex = QPushButton("나가기 (저장)")
+        ex.setFixedSize(self.s(500), self.s(100))
+        ex.setStyleSheet(f"font-size: {self.s(45)}px; background: #ff007f; color: white; border-radius: 20px;")
+        ex.clicked.connect(lambda: self.show_page(0))
+        layout.addWidget(ex)
+        
         return page
 
     def process_timer_tick(self):
@@ -1492,37 +1609,93 @@ class KioskMain(QMainWindow):
         self.total_shots = self.admin_settings.get('total_shoot_count', 8)
         self.current_countdown_display = 0
         
-        # 🔥 미리보기창 동적 생성
+        # 미리보기창 동적 생성
         # 기존 위젯 제거
         for lbl in self.left_previews + self.right_previews:
             lbl.deleteLater()
         self.left_previews.clear()
         self.right_previews.clear()
         
-        # 🔥 좌측 우측 배분: 좌측 우선 (4개까지), 나머지는 우측
-        left_count = min(self.total_shots, 4)  # 좌측 최대 4개
-        right_count = max(0, self.total_shots - 4)  # 나머지는 우측
+        # 🔥 프레임 구멍 비율 계산
+        paper = self.session_data.get('paper_type', 'full')
+        layout = self.session_data.get('layout_key', 'v2')
+        key = f"{paper}_{layout}"
+        layout_list = FRAME_LAYOUTS.get(key, [])
         
-        # 🔥 공통 스타일 (회색 배경 박스)
+        if layout_list:
+            first_slot = layout_list[0]
+            hole_ratio = first_slot['w'] / first_slot['h']
+            print(f"[DEBUG] 프레임 구멍 비율: {hole_ratio:.3f} ({first_slot['w']}x{first_slot['h']})")
+        else:
+            hole_ratio = 3 / 4  # 기본 비율
+            print(f"[DEBUG] 기본 비율 사용: {hole_ratio:.3f}")
+        
+        # 좌우 균등 배분
+        left_count = (self.total_shots + 1) // 2
+        right_count = self.total_shots // 2
+        
+        print(f"[DEBUG] 미리보기 배치: 좌측 {left_count}개, 우측 {right_count}개 (총 {self.total_shots}개)")
+        
+        # 공통 스타일
         preview_style = f"""
             background-color: #333; 
             border-radius: {self.s(10)}px;
             border: none;
         """
         
+        # 🔥 사이드바 사용 가능 영역
+        sidebar_content_width = self.s(230 - 60)  # 170px (여백 제외)
+        sidebar_content_height = int(self.new_h) - self.s(130 + 60)  # 헤더 + 여백 제외
+        
+        # 🔥 각 미리보기의 크기 계산 (구멍 비율 유지)
+        # 좌측
+        left_spacing_total = self.s(15) * (left_count - 1) if left_count > 1 else 0
+        available_height_left = (sidebar_content_height - left_spacing_total) // left_count if left_count > 0 else 100
+        
+        # 너비 기준으로 높이 계산 vs 높이 기준으로 너비 계산 중 작은 것 선택
+        height_from_width = int(sidebar_content_width / hole_ratio)
+        width_from_height = int(available_height_left * hole_ratio)
+        
+        if height_from_width <= available_height_left:
+            # 너비 꽉 채우기
+            preview_width_left = sidebar_content_width
+            preview_height_left = height_from_width
+        else:
+            # 높이 꽉 채우기
+            preview_width_left = width_from_height
+            preview_height_left = available_height_left
+        
+        # 우측
+        right_spacing_total = self.s(15) * (right_count - 1) if right_count > 1 else 0
+        available_height_right = (sidebar_content_height - right_spacing_total) // right_count if right_count > 0 else 100
+        
+        height_from_width_r = int(sidebar_content_width / hole_ratio)
+        width_from_height_r = int(available_height_right * hole_ratio)
+        
+        if height_from_width_r <= available_height_right:
+            preview_width_right = sidebar_content_width
+            preview_height_right = height_from_width_r
+        else:
+            preview_width_right = width_from_height_r
+            preview_height_right = available_height_right
+        
+        print(f"[DEBUG] 미리보기 크기: 좌측 {preview_width_left}x{preview_height_left}, 우측 {preview_width_right}x{preview_height_right}")
+        
         # 🔥 좌측 미리보기 생성
         for i in range(left_count):
             lbl = QLabel()
             lbl.setStyleSheet(preview_style)
-            lbl.setScaledContents(False)  # 비율 유지
+            lbl.setScaledContents(False)
             lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-            self.left_layout.addWidget(lbl)
+            
+            # 구멍 비율 유지한 크기 설정
+            lbl.setFixedSize(preview_width_left, preview_height_left)
+            
+            self.left_layout.addWidget(lbl, alignment=Qt.AlignmentFlag.AlignCenter)
             self.left_previews.append(lbl)
         
         # 좌측 여백
-        if left_count < 4:
-            self.left_layout.addStretch(4 - left_count)
+        self.left_layout.addStretch(1)
         
         # 🔥 우측 미리보기 생성
         for i in range(right_count):
@@ -1530,13 +1703,15 @@ class KioskMain(QMainWindow):
             lbl.setStyleSheet(preview_style)
             lbl.setScaledContents(False)
             lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-            self.right_layout.addWidget(lbl)
+            
+            # 구멍 비율 유지한 크기 설정
+            lbl.setFixedSize(preview_width_right, preview_height_right)
+            
+            self.right_layout.addWidget(lbl, alignment=Qt.AlignmentFlag.AlignCenter)
             self.right_previews.append(lbl)
         
         # 우측 여백
-        if right_count < 4:
-            self.right_layout.addStretch(4 - right_count)
+        self.right_layout.addStretch(1)
         
         # 첫 번째 촬영 준비
         QTimer.singleShot(1000, self.prepare_next_shot)
@@ -1633,7 +1808,7 @@ class KioskMain(QMainWindow):
         slot_idx = (self.current_shot_idx - 1) % len(layout_list) if layout_list else 0
         slot_info = layout_list[slot_idx] if layout_list else None
         
-        # 🔥 4. 사이드바 미리보기 업데이트 (구멍 비율에 맞춰)
+        # 🔥 4. 사이드바 미리보기 업데이트 (최대 크기로)
         all_previews = self.left_previews + self.right_previews
         preview_idx = self.current_shot_idx - 1
         
@@ -1643,30 +1818,7 @@ class KioskMain(QMainWindow):
             
             if slot_info and not pix.isNull():
                 # 🔥 구멍 비율 계산
-                hole_w = slot_info['w']
-                hole_h = slot_info['h']
-                hole_ratio = hole_w / hole_h
-                
-                # 🔥 라벨 크기 가져오기
-                label_w = lbl.width()
-                label_h = lbl.height()
-                
-                if label_w <= 0 or label_h <= 0:
-                    # 아직 렌더링 안됨 - 기본값 사용
-                    label_w = self.s(170)  # 230 - 60(여백)
-                    label_h = self.s(170)
-                
-                label_ratio = label_w / label_h
-                
-                # 🔥 구멍 비율에 맞춰 표시 크기 계산
-                if label_ratio > hole_ratio:
-                    # 라벨이 더 넓음 -> 높이 기준
-                    display_h = label_h
-                    display_w = int(display_h * hole_ratio)
-                else:
-                    # 라벨이 더 좁음 -> 너비 기준
-                    display_w = label_w
-                    display_h = int(display_w / hole_ratio)
+                hole_ratio = slot_info['w'] / slot_info['h']
                 
                 # 🔥 이미지를 구멍 비율로 크롭
                 img_w = pix.width()
@@ -1686,24 +1838,44 @@ class KioskMain(QMainWindow):
                     crop_x = 0
                     crop_y = (img_h - crop_h) // 2
                 
-                # 크롭 후 스케일
-                cropped = pix.copy(crop_x, crop_y, crop_w, crop_h)
-                scaled = cropped.scaled(
-                    display_w, display_h,
-                    Qt.AspectRatioMode.IgnoreAspectRatio,
+                # 크롭
+                cropped_pix = pix.copy(crop_x, crop_y, crop_w, crop_h)
+                
+                # 🔥 라벨 크기를 꽉 채우도록 스케일 (KeepAspectRatioByExpanding)
+                lbl.setScaledContents(False)
+                scaled = cropped_pix.scaled(
+                    lbl.width(), 
+                    lbl.height(),
+                    Qt.AspectRatioMode.KeepAspectRatioByExpanding,  # 🔥 영역을 꽉 채움
                     Qt.TransformationMode.SmoothTransformation
                 )
                 
-                lbl.setPixmap(scaled)
-                print(f"[DEBUG] 미리보기 {preview_idx}: 구멍비율 {hole_ratio:.3f} ({hole_w}x{hole_h}), 표시크기 {display_w}x{display_h}")
+                # 🔥 넘치는 부분은 중앙 크롭
+                if scaled.width() > lbl.width() or scaled.height() > lbl.height():
+                    final_x = (scaled.width() - lbl.width()) // 2
+                    final_y = (scaled.height() - lbl.height()) // 2
+                    final_pix = scaled.copy(final_x, final_y, lbl.width(), lbl.height())
+                    lbl.setPixmap(final_pix)
+                else:
+                    lbl.setPixmap(scaled)
+                
+                print(f"[DEBUG] 미리보기 {preview_idx}: 라벨크기 {lbl.width()}x{lbl.height()}")
             else:
-                # 구멍 정보 없으면 기본 표시
-                scaled_pix = pix.scaled(
-                    lbl.size(),
-                    Qt.AspectRatioMode.KeepAspectRatio,
+                # 구멍 정보 없으면 기본 표시 (꽉 채우기)
+                lbl.setScaledContents(False)
+                scaled = pix.scaled(
+                    lbl.width(),
+                    lbl.height(),
+                    Qt.AspectRatioMode.KeepAspectRatioByExpanding,
                     Qt.TransformationMode.SmoothTransformation
                 )
-                lbl.setPixmap(scaled_pix)
+                if scaled.width() > lbl.width() or scaled.height() > lbl.height():
+                    final_x = (scaled.width() - lbl.width()) // 2
+                    final_y = (scaled.height() - lbl.height()) // 2
+                    final_pix = scaled.copy(final_x, final_y, lbl.width(), lbl.height())
+                    lbl.setPixmap(final_pix)
+                else:
+                    lbl.setPixmap(scaled)
 
         # 5. 다음 컷으로 진행
         self.current_shot_idx += 1
