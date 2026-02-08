@@ -1016,7 +1016,7 @@ class KioskMain(QMainWindow):
         content_widget = QWidget()
         content_widget.setStyleSheet("background: transparent;")
         
-        # 🔥 좌측: 프레임 미리보기 배경 (사진 선택과 동일)
+        # 좌측: 프레임 미리보기 배경
         preview_bg = QWidget(content_widget)
         preview_bg.setFixedSize(self.s(700), self.s(700))
         preview_bg.setStyleSheet(f"""
@@ -1025,38 +1025,58 @@ class KioskMain(QMainWindow):
         """)
         preview_bg.move(self.s(110), self.s(30))
         
-        # 미리보기 라벨 (배경 안에 50px 여백)
+        # 미리보기 라벨
         self.result_label = QLabel(preview_bg)
         self.result_label.setGeometry(self.s(50), self.s(50), self.s(600), self.s(600))
         self.result_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.result_label.setStyleSheet("background: transparent; border: none;")
         self.result_label.setScaledContents(False)
         
-        # 🔥 우측 영역 계산
+        # 🔥 우측 영역 시작 위치
         right_x = self.s(110 + 700 + 30)
         right_y = self.s(30)
-        right_total_width = int(self.new_w) - right_x - self.s(110)
+        btn_y = self.s(30 + 700 - 140)  # 출력하기 버튼 위치
         
-        # 🔥 출력하기 버튼 위치 기준으로 높이 계산
-        btn_y = self.s(30 + 700 - 140)  # 출력하기 버튼 y 위치
-        filter_bg_height = btn_y - right_y - self.s(30)  # 상단부터 버튼 위 30px까지
+        # 🔥 필터 선택 배경 높이 = 출력하기 버튼 상단 30px까지
+        filter_bg_height = btn_y - right_y - self.s(30)
         
-        # 🔥 필터 선택 배경 (좌측)
-        filter_bg_width = int(right_total_width * 0.65)
+        # 🔥 필터 선택 배경 너비 (버튼 3개 + 간격 + 여백)
+        filter_content_width = self.s(40 + 140 + 20 + 140 + 20 + 140 + 40)  # 540px
+        
+        # 필터 선택 배경
         filter_bg = QWidget(content_widget)
-        filter_bg.setGeometry(right_x, right_y, filter_bg_width, filter_bg_height)
+        filter_bg.setGeometry(right_x, right_y, filter_content_width, filter_bg_height)
         filter_bg.setStyleSheet(f"""
             background-color: rgba(236, 236, 236, 0.5);
             border-radius: {self.s(20)}px;
         """)
         
-        # 필터 버튼 레이아웃
-        filter_grid = QGridLayout(filter_bg)
-        filter_grid.setContentsMargins(self.s(30), self.s(30), self.s(30), self.s(30))
-        filter_grid.setSpacing(self.s(20))
-        filter_grid.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # 🔥 '필터' 텍스트 (상단)
+        lbl_filter_title = QLabel("필터", filter_bg)
+        lbl_filter_title.setGeometry(self.s(40), self.s(40), self.s(200), self.s(28))
+        lbl_filter_title.setStyleSheet(f"""
+            font-family: 'Pretendard';
+            font-size: {self.s(28)}pt;
+            color: rgba(0, 0, 0, 0.5);
+            background: transparent;
+        """)
         
-        # 🔥 필터 버튼들 (6가지, 2행 3열)
+        # 🔥 필터 버튼 그리드 (하단 정렬)
+        # 하단에서부터 계산: 여백 40px + 버튼 2행 (140*2 + 20) = 300px
+        filter_buttons_y = filter_bg_height - self.s(40 + 140 + 20 + 140)
+        
+        filter_grid_widget = QWidget(filter_bg)
+        filter_grid_widget.setGeometry(
+            self.s(40), 
+            int(filter_buttons_y),
+            self.s(140*3 + 20*2), 
+            self.s(140*2 + 20)
+        )
+        filter_grid = QGridLayout(filter_grid_widget)
+        filter_grid.setContentsMargins(0, 0, 0, 0)
+        filter_grid.setSpacing(self.s(20))
+        
+        # 필터 버튼들
         fs = [
             ("원본", "original"), 
             ("웜톤", "warm"), 
@@ -1071,7 +1091,6 @@ class KioskMain(QMainWindow):
             b = QPushButton(t)
             b.setFixedSize(self.s(140), self.s(140))
             b.setCheckable(True)
-            # 🔥 '원본' 버튼 기본 선택
             if m == "original":
                 b.setChecked(True)
             
@@ -1100,9 +1119,9 @@ class KioskMain(QMainWindow):
             filter_grid.addWidget(b, row, col)
             self.filter_buttons.append(b)
         
-        # 🔥 좌우반전 배경 (우측)
-        mirror_bg_x = right_x + filter_bg_width + self.s(30)
-        mirror_bg_width = right_total_width - filter_bg_width - self.s(30)
+        # 🔥 좌우반전 배경 (필터 배경 우측, 동일한 높이)
+        mirror_bg_x = right_x + filter_content_width + self.s(30)
+        mirror_bg_width = int(self.new_w) - mirror_bg_x - self.s(110)
         
         mirror_bg = QWidget(content_widget)
         mirror_bg.setGeometry(mirror_bg_x, right_y, mirror_bg_width, filter_bg_height)
@@ -1111,17 +1130,24 @@ class KioskMain(QMainWindow):
             border-radius: {self.s(20)}px;
         """)
         
-        # 좌우반전 버튼 레이아웃
-        mirror_layout = QVBoxLayout(mirror_bg)
-        mirror_layout.setContentsMargins(self.s(30), self.s(30), self.s(30), self.s(30))
-        mirror_layout.setSpacing(self.s(20))
-        mirror_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # 🔥 '좌우반전' 텍스트 (상단)
+        lbl_mirror_title = QLabel("좌우반전", mirror_bg)
+        lbl_mirror_title.setGeometry(self.s(40), self.s(40), self.s(200), self.s(28))
+        lbl_mirror_title.setStyleSheet(f"""
+            font-family: 'Pretendard';
+            font-size: {self.s(28)}pt;
+            color: rgba(0, 0, 0, 0.5);
+            background: transparent;
+        """)
+        
+        # 🔥 ON/OFF 버튼 (필터 버튼과 같은 높이, 하단 정렬)
+        mirror_btn_y = int(filter_buttons_y)
         
         # ON 버튼
-        self.btn_mirror_on = QPushButton("ON")
-        self.btn_mirror_on.setFixedSize(self.s(140), self.s(140))
+        self.btn_mirror_on = QPushButton("ON", mirror_bg)
+        self.btn_mirror_on.setGeometry(self.s(40), mirror_btn_y, self.s(140), self.s(140))
         self.btn_mirror_on.setCheckable(True)
-        self.btn_mirror_on.setChecked(True)  # 🔥 기본값 ON
+        self.btn_mirror_on.setChecked(True)
         self.btn_mirror_on.setStyleSheet(f"""
             QPushButton {{ 
                 background-color: #474747;
@@ -1143,8 +1169,8 @@ class KioskMain(QMainWindow):
         self.btn_mirror_on.clicked.connect(lambda: self.toggle_mirror(True))
         
         # OFF 버튼
-        self.btn_mirror_off = QPushButton("OFF")
-        self.btn_mirror_off.setFixedSize(self.s(140), self.s(140))
+        self.btn_mirror_off = QPushButton("OFF", mirror_bg)
+        self.btn_mirror_off.setGeometry(self.s(40 + 140 + 20), mirror_btn_y, self.s(140), self.s(140))
         self.btn_mirror_off.setCheckable(True)
         self.btn_mirror_off.setStyleSheet(f"""
             QPushButton {{ 
@@ -1166,9 +1192,6 @@ class KioskMain(QMainWindow):
         """)
         self.btn_mirror_off.clicked.connect(lambda: self.toggle_mirror(False))
         
-        mirror_layout.addWidget(self.btn_mirror_on)
-        mirror_layout.addWidget(self.btn_mirror_off)
-        
         # 출력하기 버튼
         self.btn_print = GradientButton("출력하기", "Print", content_widget, self.s)
         btn_x = int(self.new_w) - self.s(110) - self.s(350)
@@ -1180,7 +1203,7 @@ class KioskMain(QMainWindow):
         main_layout.addWidget(content_widget)
         
         return page
-    
+
     def toggle_mirror(self, is_on):
         """좌우반전 토글 - ON/OFF 버튼 방식"""
         # 버튼 상태 업데이트
