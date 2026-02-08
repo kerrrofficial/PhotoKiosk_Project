@@ -995,21 +995,92 @@ class KioskMain(QMainWindow):
             traceback.print_exc()
 
     def create_filter_page(self):
-        page = QWidget(); self.apply_window_style(page, "common"); main_layout = QHBoxLayout(page); main_layout.setContentsMargins(self.s(50), self.s(50), self.s(50), self.s(50))
-        self.result_label = QLabel("이미지 생성 중..."); self.result_label.setAlignment(Qt.AlignmentFlag.AlignCenter); self.result_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding); self.result_label.setStyleSheet("background: white; border: 5px solid white; border-radius: 10px;")
-        right_panel = QVBoxLayout()
-        lbl = QLabel("필터 선택"); lbl.setAlignment(Qt.AlignmentFlag.AlignCenter); lbl.setStyleSheet(f"font-size: {self.s(55)}px; font-weight: 600; margin-bottom: {self.s(30)}px;")
-        right_panel.addWidget(lbl)
-        filter_grid = QGridLayout()
+        page = QWidget()
+        self.apply_window_style(page, "common")
+        
+        main_layout = QVBoxLayout(page)
+        main_layout.setContentsMargins(0, 0, 0, self.s(50))
+        main_layout.setSpacing(self.s(20))
+        
+        # 헤더
+        self.lbl_timer_filter = self.create_header(
+            main_layout,
+            "Select your Filter",
+            "필터를 선택해주세요",
+            False,
+            None
+        )
+        
+        # 메인 컨텐츠 영역
+        content_widget = QWidget()
+        content_widget.setStyleSheet("background: transparent;")
+        
+        # 🔥 좌측: 프레임 미리보기 배경 (사진 선택과 동일)
+        preview_bg = QWidget(content_widget)
+        preview_bg.setFixedSize(self.s(700), self.s(700))
+        preview_bg.setStyleSheet(f"""
+            background-color: #ECECEC;
+            border-radius: {self.s(12)}px;
+        """)
+        # 🔥 위치: 뒤로가기와 왼쪽 정렬 (x: 110), 헤더 아래 30px
+        preview_bg.move(self.s(110), self.s(30))
+        
+        # 🔥 미리보기 라벨 (배경 안에 50px 여백)
+        self.result_label = QLabel(preview_bg)
+        self.result_label.setGeometry(self.s(50), self.s(50), self.s(600), self.s(600))
+        self.result_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.result_label.setStyleSheet("background: white; border: none;")
+        self.result_label.setScaledContents(False)
+        
+        # 🔥 우측: 필터 버튼들 (사진 선택의 그리드 영역과 동일)
+        filter_container = QWidget(content_widget)
+        filter_layout = QVBoxLayout(filter_container)
+        filter_layout.setContentsMargins(0, 0, 0, 0)
+        filter_layout.setSpacing(self.s(20))
+        
+        # 🔥 그리드 영역과 동일한 위치 계산
+        filter_x = self.s(110 + 700 + 30)  # 미리보기 우측 + 30px
+        filter_right = int(self.new_w) - self.s(110)  # 우측 여백
+        filter_width = filter_right - filter_x
+        filter_y = self.s(30)  # 미리보기와 상단 정렬
+        filter_bottom = self.s(30 + 700 - 140 - 30)  # 출력하기 버튼 위 30px
+        filter_height = filter_bottom - filter_y
+        
+        filter_container.setGeometry(filter_x, filter_y, filter_width, filter_height)
+        
+        # 필터 버튼들
         fs = [("원본", "original"), ("🖤 흑백", "gray"), ("✨ 뽀샤시", "beauty"), ("🧡 웜톤", "warm"), ("💙 쿨톤", "cool"), ("☀️ 밝게", "bright")]
-        for i, (t, m) in enumerate(fs):
-            b = QPushButton(t); b.setFixedSize(self.s(220), self.s(120)); b.clicked.connect(lambda _, x=m: self.apply_filter_click(x)); filter_grid.addWidget(b, i//2, i%2)
-        right_panel.addLayout(filter_grid); right_panel.addStretch(1)
-        bp = QPushButton("🖨️ 출력 하기"); bp.setFixedHeight(self.s(120)); bp.setStyleSheet(f"background: #3b5998; color: white; font-size: {self.s(50)}px; font-weight: 600; border-radius: {self.s(20)}px;")
-        bp.clicked.connect(self.start_printing)
-        right_panel.addWidget(bp)
-        r_widget = QWidget(); r_widget.setLayout(right_panel); r_widget.setFixedWidth(self.s(500))
-        main_layout.addWidget(self.result_label); main_layout.addWidget(r_widget)
+        for t, m in fs:
+            b = QPushButton(t)
+            b.setFixedHeight(self.s(100))
+            b.setStyleSheet(f"""
+                QPushButton {{ 
+                    background: #eee; 
+                    font-size: {self.s(40)}px; 
+                    font-weight: 600;
+                    border-radius: {self.s(20)}px; 
+                    border: none;
+                }} 
+                QPushButton:hover {{ 
+                    background: #ddd; 
+                }}
+            """)
+            b.clicked.connect(lambda _, x=m: self.apply_filter_click(x))
+            filter_layout.addWidget(b)
+        
+        filter_layout.addStretch()
+        
+        # 출력하기 버튼 (선택완료와 동일)
+        self.btn_print = GradientButton("출력하기", "Print", content_widget, self.s)
+        btn_x = int(self.new_w) - self.s(110) - self.s(350)
+        btn_y = self.s(30 + 700 - 140)  # 미리보기 하단 정렬
+        self.btn_print.move(btn_x, btn_y)
+        self.btn_print.clicked.connect(self.start_printing)
+        
+        content_widget.setGeometry(0, 0, int(self.new_w), int(self.new_h))
+        
+        main_layout.addWidget(content_widget)
+        
         return page
 
     def apply_filter_click(self, m):
@@ -1226,7 +1297,8 @@ class KioskMain(QMainWindow):
         target_lbl = None
         if idx == 1: target_lbl = getattr(self, 'lbl_timer_frame', None)
         elif idx == 2: target_lbl = getattr(self, 'lbl_timer_payment', None)
-        elif idx == 4: target_lbl = getattr(self, 'lbl_timer_select', None)  # 🔥 추가
+        elif idx == 4: target_lbl = getattr(self, 'lbl_timer_select', None)
+        elif idx == 5: target_lbl = getattr(self, 'lbl_timer_filter', None)  # 🔥 추가
         if target_lbl: target_lbl.setText(str(self.remaining_time))
         if self.remaining_time <= 0: self.on_timeout()
 
@@ -1572,7 +1644,13 @@ class KioskMain(QMainWindow):
             # 페이지 로드
             self.load_select_page()
             print("[DEBUG] 사진 선택 페이지 로드 완료")
-        elif idx==5: self.final_print_path = self.final_image_path; self.result_label.setPixmap(QPixmap(self.final_image_path).scaled(800,1200, Qt.AspectRatioMode.KeepAspectRatio))
+        elif idx==5: 
+            self.final_print_path = self.final_image_path
+            self.result_label.setPixmap(QPixmap(self.final_image_path).scaled(
+                self.s(600), self.s(600), 
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation
+            ))
         elif idx==6:
             if hasattr(self, 'final_print_path') and os.path.exists(self.final_print_path):
                 pix = QPixmap(self.final_print_path); self.lbl_print_preview.setPixmap(pix.scaled(self.lbl_print_preview.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
@@ -1592,7 +1670,10 @@ class KioskMain(QMainWindow):
                 self.lbl_timer_payment.setText(str(t))
             elif idx == 4 and hasattr(self, 'lbl_timer_select'):
                 self.lbl_timer_select.setText(str(t))
+            elif idx == 5 and hasattr(self, 'lbl_timer_filter'):  # 🔥 추가
+                self.lbl_timer_filter.setText(str(t))
             self.timer.start(1000)
+    
     # -----------------------------------------------------------
     # [Shooting Logic] - 구현 완료된 촬영 로직
     # -----------------------------------------------------------
