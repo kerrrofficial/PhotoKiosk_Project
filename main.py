@@ -649,15 +649,15 @@ class KioskMain(QMainWindow):
         self.lbl_select_preview.setScaledContents(False)
         self.lbl_select_preview.clicked.connect(self.on_preview_clicked)
         
-        # 🔥 프레임 구멍 비율에 따라 그리드 배치 결정
+       # 🔥 프레임 구멍 비율에 따라 그리드 배치 결정
         paper = self.session_data.get('paper_type', 'full')
         layout = self.session_data.get('layout_key', 'v2')
         key = f"{paper}_{layout}"
-        
+
         print(f"[DEBUG] 그리드 생성 - paper: {paper}, layout: {layout}, key: {key}")
-        
+
         layout_list = FRAME_LAYOUTS.get(key, [])
-        
+
         # 구멍 비율 계산
         if layout_list:
             first_slot = layout_list[0]
@@ -668,9 +668,8 @@ class KioskMain(QMainWindow):
         else:
             hole_ratio = 1.0
             print(f"[DEBUG] 레이아웃 데이터 없음, 기본 비율 사용: {hole_ratio}")
-        
-        # 🔥 비율에 따라 행/열 결정
 
+        # 비율에 따라 행/열 결정
         if hole_ratio > 1.1:
             # 가로형 (가로가 더 넓음)
             grid_cols = 4
@@ -684,41 +683,50 @@ class KioskMain(QMainWindow):
         else:
             # 정방형 (비슷한 비율)
             grid_cols = 5
-            grid_rows = 3  # 3행이지만 12개만 표시
+            grid_rows = 3
             print(f"[DEBUG] 정방형 그리드 선택: 5열 x 3행 (0.9 ≤ {hole_ratio:.3f} ≤ 1.1)")
 
         # 우측: 촬영 사진 그리드
         grid_container = QWidget(content_widget)
         grid_container.setStyleSheet("background: transparent;")
 
-        # 🔥 그리드 영역 계산
-        # 좌측: 프레임 미리보기 배경 우측 + 30px
-        # 미리보기 위치: x=110, width=700 → 우측 끝 = 810
+        # 그리드 영역 계산
         grid_x = self.s(110 + 700 + 30)
-
-        # 우측: 타이머와 우측 정렬
-        # 타이머 위치: 우측에서 110 + 200
         grid_right = int(self.new_w) - self.s(110)
         grid_width = grid_right - grid_x
-
-        # 🔥 상단: 프레임 미리보기와 상단 정렬
-        # 미리보기 배경 y위치: 30
         grid_y = self.s(30)
-
-        # 🔥 하단: 선택완료 버튼보다 30px 위
-        # 버튼 y위치: 30 + 700 - 140 = 590
         grid_bottom = self.s(30 + 700 - 140 - 30)
         grid_height = grid_bottom - grid_y
 
         print(f"[DEBUG] 그리드 영역: x={grid_x}, y={grid_y}, w={grid_width}, h={grid_height}")
 
-        # 그리드 컨테이너 배치 (절대 위치)
+        # 그리드 컨테이너 배치
         grid_container.setGeometry(grid_x, grid_y, grid_width, grid_height)
 
         # QGridLayout을 직접 grid_container에 설정
         self.photo_grid = QGridLayout(grid_container)
         self.photo_grid.setSpacing(0)  # 🔥 간격 0
         self.photo_grid.setContentsMargins(0, 0, 0, 0)  # 🔥 여백 0
+
+        # 🔥 각 버튼의 크기 계산 (구멍 비율 유지)
+        btn_width = grid_width // grid_cols
+        btn_height = grid_height // grid_rows
+
+        # 구멍 비율에 맞춰 조정
+        height_from_width = int(btn_width / hole_ratio)
+        width_from_height = int(btn_height * hole_ratio)
+
+        if height_from_width <= btn_height:
+            # 너비 기준
+            final_btn_width = btn_width
+            final_btn_height = height_from_width
+        else:
+            # 높이 기준
+            final_btn_width = width_from_height
+            final_btn_height = btn_height
+
+        print(f"[DEBUG] 버튼 크기: {final_btn_width}x{final_btn_height} (비율 {hole_ratio:.3f})")
+
         self.photo_buttons = []
 
         # 동적으로 12개 버튼 배치
@@ -738,14 +746,19 @@ class KioskMain(QMainWindow):
                     background-color: #f0f0f0;
                 }}
             """)
-            b.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+            
+            # 🔥 고정 크기 설정 (구멍 비율 유지)
+            b.setFixedSize(final_btn_width, final_btn_height)
+            
             b.clicked.connect(lambda checked=False, x=i: self.on_source_click(x))
             self.photo_buttons.append(b)
             
             # 행/열 계산
             row = i // grid_cols
             col = i % grid_cols
-            self.photo_grid.addWidget(b, row, col)
+            
+            # 🔥 중앙 정렬로 추가
+            self.photo_grid.addWidget(b, row, col, Qt.AlignmentFlag.AlignCenter)
         
         # 선택 완료 버튼
         self.btn_finish_select = GradientButton("선택 완료", "Complete", content_widget, self.s)
