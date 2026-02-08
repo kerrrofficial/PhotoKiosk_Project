@@ -633,6 +633,8 @@ class KioskMain(QMainWindow):
         content_widget = QWidget()
         content_widget.setStyleSheet("background: transparent;")
         
+        preview_bg_y = self.s(10) 
+
         # 좌측: 프레임 미리보기 배경
         preview_bg = QWidget(content_widget)
         preview_bg.setFixedSize(self.s(700), self.s(700))
@@ -640,7 +642,7 @@ class KioskMain(QMainWindow):
             background-color: #ECECEC;
             border-radius: {self.s(12)}px;
         """)
-        preview_bg.move(self.s(110), self.s(30))
+        preview_bg.move(self.s(110), preview_bg_y) 
         
         # 미리보기 라벨
         self.lbl_select_preview = ClickableLabel(preview_bg)
@@ -764,7 +766,7 @@ class KioskMain(QMainWindow):
         # 선택 완료 버튼
         self.btn_finish_select = GradientButton("선택 완료", "Complete", content_widget, self.s)
         btn_x = int(self.new_w) - self.s(110) - self.s(350)
-        btn_y = self.s(30 + 700 - 140)
+        btn_y = preview_bg_y + self.s(700 - 140)  # 🔥 preview_bg_y 기준으로 계산
         self.btn_finish_select.move(btn_x, btn_y)
         self.btn_finish_select.setEnabled(False)
         self.btn_finish_select.clicked.connect(self.confirm_selection)
@@ -1015,7 +1017,10 @@ class KioskMain(QMainWindow):
         # 메인 컨텐츠 영역
         content_widget = QWidget()
         content_widget.setStyleSheet("background: transparent;")
-        
+
+        # 🔥 통일된 상단 y 위치
+        top_y = self.s(10)
+
         # 좌측: 프레임 미리보기 배경
         preview_bg = QWidget(content_widget)
         preview_bg.setFixedSize(self.s(700), self.s(700))
@@ -1023,7 +1028,7 @@ class KioskMain(QMainWindow):
             background-color: #ECECEC;
             border-radius: {self.s(12)}px;
         """)
-        preview_bg.move(self.s(110), self.s(30))
+        preview_bg.move(self.s(110), top_y)
         
         # 미리보기 라벨
         self.result_label = QLabel(preview_bg)
@@ -1032,26 +1037,28 @@ class KioskMain(QMainWindow):
         self.result_label.setStyleSheet("background: transparent; border: none;")
         self.result_label.setScaledContents(False)
         
-        # 🔥 우측 영역 시작 위치
+        # 🔥 우측 영역 시작 위치 (상단 통일)
         right_x = self.s(110 + 700 + 30)
-        right_y = self.s(30)
-        btn_y = self.s(30 + 700 - 140)  # 출력하기 버튼 위치
         
-        # 🔥 필터 선택 배경 높이 = 출력하기 버튼 상단 30px까지
-        filter_bg_height = btn_y - right_y - self.s(30)
+        # 🔥 출력하기 버튼 위치 (사진선택완료와 동일)
+        btn_x = int(self.new_w) - self.s(110) - self.s(350)
+        btn_y = top_y + self.s(700 - 140)
         
-        # 🔥 필터 선택 배경 너비 (버튼 3개 + 간격 + 여백)
+        # 🔥 필터/좌우반전 배경 높이 = 출력하기 버튼 상단 30px까지
+        filter_bg_height = btn_y - top_y - self.s(30)
+        
+        # 🔥 필터 선택 배경 너비
         filter_content_width = self.s(40 + 140 + 20 + 140 + 20 + 140 + 40)  # 540px
         
         # 필터 선택 배경
         filter_bg = QWidget(content_widget)
-        filter_bg.setGeometry(right_x, right_y, filter_content_width, filter_bg_height)
+        filter_bg.setGeometry(right_x, top_y, filter_content_width, filter_bg_height)  # 🔥 top_y 사용
         filter_bg.setStyleSheet(f"""
             background-color: rgba(236, 236, 236, 0.5);
             border-radius: {self.s(20)}px;
         """)
         
-        # 🔥 '필터' 텍스트 (상단)
+        # '필터' 텍스트
         lbl_filter_title = QLabel("필터", filter_bg)
         lbl_filter_title.setGeometry(self.s(40), self.s(40), self.s(200), self.s(28))
         lbl_filter_title.setStyleSheet(f"""
@@ -1061,8 +1068,7 @@ class KioskMain(QMainWindow):
             background: transparent;
         """)
         
-        # 🔥 필터 버튼 그리드 (하단 정렬)
-        # 하단에서부터 계산: 여백 40px + 버튼 2행 (140*2 + 20) = 300px
+        # 필터 버튼 그리드 (하단 정렬)
         filter_buttons_y = filter_bg_height - self.s(40 + 140 + 20 + 140)
         
         filter_grid_widget = QWidget(filter_bg)
@@ -1119,18 +1125,18 @@ class KioskMain(QMainWindow):
             filter_grid.addWidget(b, row, col)
             self.filter_buttons.append(b)
         
-        # 🔥 좌우반전 배경 (필터 배경 우측, 동일한 높이)
+        # 🔥 좌우반전 배경 (필터 배경 우측, 상단 정렬)
         mirror_bg_x = right_x + filter_content_width + self.s(30)
         mirror_bg_width = int(self.new_w) - mirror_bg_x - self.s(110)
         
         mirror_bg = QWidget(content_widget)
-        mirror_bg.setGeometry(mirror_bg_x, right_y, mirror_bg_width, filter_bg_height)
+        mirror_bg.setGeometry(mirror_bg_x, top_y, mirror_bg_width, filter_bg_height)  # 🔥 top_y 사용
         mirror_bg.setStyleSheet(f"""
             background-color: rgba(236, 236, 236, 0.5);
             border-radius: {self.s(20)}px;
         """)
         
-        # 🔥 '좌우반전' 텍스트 (상단)
+        # '좌우반전' 텍스트
         lbl_mirror_title = QLabel("좌우반전", mirror_bg)
         lbl_mirror_title.setGeometry(self.s(40), self.s(40), self.s(200), self.s(28))
         lbl_mirror_title.setStyleSheet(f"""
@@ -1140,7 +1146,7 @@ class KioskMain(QMainWindow):
             background: transparent;
         """)
         
-        # 🔥 ON/OFF 버튼 (필터 버튼과 같은 높이, 하단 정렬)
+        # ON/OFF 버튼 (필터 버튼과 같은 높이)
         mirror_btn_y = int(filter_buttons_y)
         
         # ON 버튼
@@ -1192,9 +1198,8 @@ class KioskMain(QMainWindow):
         """)
         self.btn_mirror_off.clicked.connect(lambda: self.toggle_mirror(False))
         
-        # 출력하기 버튼
+        # 🔥 출력하기 버튼 (사진선택완료와 동일한 위치)
         self.btn_print = GradientButton("출력하기", "Print", content_widget, self.s)
-        btn_x = int(self.new_w) - self.s(110) - self.s(350)
         self.btn_print.move(btn_x, btn_y)
         self.btn_print.clicked.connect(self.start_printing)
         
