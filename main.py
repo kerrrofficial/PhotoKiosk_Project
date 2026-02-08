@@ -1016,33 +1016,45 @@ class KioskMain(QMainWindow):
         content_widget = QWidget()
         content_widget.setStyleSheet("background: transparent;")
         
-        # 🔥 좌측: 프레임 미리보기 (흰 배경 제거)
-        self.result_label = QLabel(content_widget)
-        self.result_label.setGeometry(self.s(110), self.s(30), self.s(700), self.s(700))
+        # 🔥 좌측: 프레임 미리보기 배경 (사진 선택과 동일)
+        preview_bg = QWidget(content_widget)
+        preview_bg.setFixedSize(self.s(700), self.s(700))
+        preview_bg.setStyleSheet(f"""
+            background-color: #ECECEC;
+            border-radius: {self.s(12)}px;
+        """)
+        preview_bg.move(self.s(110), self.s(30))
+        
+        # 미리보기 라벨 (배경 안에 50px 여백)
+        self.result_label = QLabel(preview_bg)
+        self.result_label.setGeometry(self.s(50), self.s(50), self.s(600), self.s(600))
         self.result_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.result_label.setStyleSheet("background: transparent; border: none;")
         self.result_label.setScaledContents(False)
         
-        # 🔥 우측 영역: 필터 선택 + 좌우반전
+        # 🔥 우측 영역 계산
         right_x = self.s(110 + 700 + 30)
         right_y = self.s(30)
-        right_width = int(self.new_w) - right_x - self.s(110)
-        right_height = self.s(700)
+        right_total_width = int(self.new_w) - right_x - self.s(110)
         
-        # 🔥 필터 선택 배경
+        # 🔥 출력하기 버튼 위치 기준으로 높이 계산
+        btn_y = self.s(30 + 700 - 140)  # 출력하기 버튼 y 위치
+        filter_bg_height = btn_y - right_y - self.s(30)  # 상단부터 버튼 위 30px까지
+        
+        # 🔥 필터 선택 배경 (좌측)
+        filter_bg_width = int(right_total_width * 0.65)
         filter_bg = QWidget(content_widget)
-        filter_bg_height = self.s(700 - 140 - 30)  # 좌우반전 높이 - 간격
-        filter_bg.setGeometry(right_x, right_y, right_width, filter_bg_height)
+        filter_bg.setGeometry(right_x, right_y, filter_bg_width, filter_bg_height)
         filter_bg.setStyleSheet(f"""
             background-color: rgba(236, 236, 236, 0.5);
             border-radius: {self.s(20)}px;
         """)
         
-        # 필터 버튼 레이아웃 (2행 x 3열)
+        # 필터 버튼 레이아웃
         filter_grid = QGridLayout(filter_bg)
         filter_grid.setContentsMargins(self.s(30), self.s(30), self.s(30), self.s(30))
         filter_grid.setSpacing(self.s(20))
-        filter_grid.setAlignment(Qt.AlignmentFlag.AlignBottom)
+        filter_grid.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         # 🔥 필터 버튼들 (6가지, 2행 3열)
         fs = [
@@ -1054,9 +1066,15 @@ class KioskMain(QMainWindow):
             ("뽀샤시", "beauty")
         ]
         
+        self.filter_buttons = []
         for idx, (t, m) in enumerate(fs):
             b = QPushButton(t)
             b.setFixedSize(self.s(140), self.s(140))
+            b.setCheckable(True)
+            # 🔥 '원본' 버튼 기본 선택
+            if m == "original":
+                b.setChecked(True)
+            
             b.setStyleSheet(f"""
                 QPushButton {{ 
                     background-color: #474747;
@@ -1067,38 +1085,44 @@ class KioskMain(QMainWindow):
                     border-radius: {self.s(20)}px;
                     border: none;
                 }} 
+                QPushButton:checked {{ 
+                    background-color: #9C77FF;
+                    color: rgba(255, 255, 255, 1.0);
+                }}
                 QPushButton:hover {{ 
                     background-color: #5a5a5a;
-                    color: rgba(255, 255, 255, 0.7);
-                }}
-                QPushButton:pressed {{ 
-                    background-color: #3a3a3a;
                 }}
             """)
-            b.clicked.connect(lambda _, x=m: self.apply_filter_click(x))
+            b.clicked.connect(lambda _, x=m, btn=b: self.apply_filter_click(x, btn))
             
             row = idx // 3
             col = idx % 3
             filter_grid.addWidget(b, row, col)
+            self.filter_buttons.append(b)
         
-        # 🔥 좌우반전 배경
+        # 🔥 좌우반전 배경 (우측)
+        mirror_bg_x = right_x + filter_bg_width + self.s(30)
+        mirror_bg_width = right_total_width - filter_bg_width - self.s(30)
+        
         mirror_bg = QWidget(content_widget)
-        mirror_bg_y = right_y + filter_bg_height + self.s(30)
-        mirror_bg.setGeometry(right_x, mirror_bg_y, right_width, self.s(140))
+        mirror_bg.setGeometry(mirror_bg_x, right_y, mirror_bg_width, filter_bg_height)
         mirror_bg.setStyleSheet(f"""
             background-color: rgba(236, 236, 236, 0.5);
             border-radius: {self.s(20)}px;
         """)
         
-        # 좌우반전 버튼
-        mirror_layout = QHBoxLayout(mirror_bg)
+        # 좌우반전 버튼 레이아웃
+        mirror_layout = QVBoxLayout(mirror_bg)
         mirror_layout.setContentsMargins(self.s(30), self.s(30), self.s(30), self.s(30))
+        mirror_layout.setSpacing(self.s(20))
+        mirror_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
-        self.btn_mirror = QPushButton("⇄ 좌우반전")
-        self.btn_mirror.setFixedSize(self.s(140), self.s(80))
-        self.btn_mirror.setCheckable(True)
-        self.btn_mirror.setChecked(False)
-        self.btn_mirror.setStyleSheet(f"""
+        # ON 버튼
+        self.btn_mirror_on = QPushButton("ON")
+        self.btn_mirror_on.setFixedSize(self.s(140), self.s(140))
+        self.btn_mirror_on.setCheckable(True)
+        self.btn_mirror_on.setChecked(True)  # 🔥 기본값 ON
+        self.btn_mirror_on.setStyleSheet(f"""
             QPushButton {{ 
                 background-color: #474747;
                 color: rgba(255, 255, 255, 0.5);
@@ -1109,21 +1133,45 @@ class KioskMain(QMainWindow):
                 border: none;
             }} 
             QPushButton:checked {{ 
-                background-color: #ff007f;
+                background-color: #9C77FF;
                 color: rgba(255, 255, 255, 1.0);
             }}
             QPushButton:hover {{ 
                 background-color: #5a5a5a;
             }}
         """)
-        self.btn_mirror.clicked.connect(self.toggle_mirror)
-        mirror_layout.addWidget(self.btn_mirror)
-        mirror_layout.addStretch()
+        self.btn_mirror_on.clicked.connect(lambda: self.toggle_mirror(True))
+        
+        # OFF 버튼
+        self.btn_mirror_off = QPushButton("OFF")
+        self.btn_mirror_off.setFixedSize(self.s(140), self.s(140))
+        self.btn_mirror_off.setCheckable(True)
+        self.btn_mirror_off.setStyleSheet(f"""
+            QPushButton {{ 
+                background-color: #474747;
+                color: rgba(255, 255, 255, 0.5);
+                font-family: 'Pretendard';
+                font-size: {self.s(28)}pt;
+                font-weight: 600;
+                border-radius: {self.s(20)}px;
+                border: none;
+            }} 
+            QPushButton:checked {{ 
+                background-color: #9C77FF;
+                color: rgba(255, 255, 255, 1.0);
+            }}
+            QPushButton:hover {{ 
+                background-color: #5a5a5a;
+            }}
+        """)
+        self.btn_mirror_off.clicked.connect(lambda: self.toggle_mirror(False))
+        
+        mirror_layout.addWidget(self.btn_mirror_on)
+        mirror_layout.addWidget(self.btn_mirror_off)
         
         # 출력하기 버튼
         self.btn_print = GradientButton("출력하기", "Print", content_widget, self.s)
         btn_x = int(self.new_w) - self.s(110) - self.s(350)
-        btn_y = self.s(30 + 700 - 140)
         self.btn_print.move(btn_x, btn_y)
         self.btn_print.clicked.connect(self.start_printing)
         
@@ -1133,11 +1181,19 @@ class KioskMain(QMainWindow):
         
         return page
     
-    def toggle_mirror(self):
-        """좌우반전 토글 - 사진만 반전, 프레임은 유지"""
-        self.is_mirrored = self.btn_mirror.isChecked()
+    def toggle_mirror(self, is_on):
+        """좌우반전 토글 - ON/OFF 버튼 방식"""
+        # 버튼 상태 업데이트
+        if is_on:
+            self.btn_mirror_on.setChecked(True)
+            self.btn_mirror_off.setChecked(False)
+        else:
+            self.btn_mirror_on.setChecked(False)
+            self.btn_mirror_off.setChecked(True)
         
-        # 🔥 원본 사진들을 좌우반전한 후 프레임 합성
+        self.is_mirrored = is_on
+        
+        # 원본 사진들을 좌우반전한 후 프레임 합성
         sp = [self.captured_files[i] for i in self.selected_indices if i is not None]
         fp = self.session_data.get('frame_path')
         l_key = self.session_data.get('layout_key')
@@ -1150,16 +1206,11 @@ class KioskMain(QMainWindow):
                 img = QPixmap(photo_path)
                 img = img.toImage().mirrored(True, False)
                 img = QPixmap.fromImage(img)
-                
-                # 임시 저장
                 temp_path = photo_path.replace('.jpg', '_temp_mirror.jpg')
                 img.save(temp_path)
                 mirrored_photos.append(temp_path)
-            
-            # 반전된 사진으로 프레임 합성
             merged_path = merge_4cut_vertical(mirrored_photos, fp, fk)
         else:
-            # 원본 사진으로 프레임 합성
             merged_path = merge_4cut_vertical(sp, fp, fk)
         
         # 현재 필터 적용
@@ -1175,11 +1226,16 @@ class KioskMain(QMainWindow):
             Qt.TransformationMode.SmoothTransformation
         ))
 
-    def apply_filter_click(self, m):
-        """필터 적용 - 좌우반전 상태 유지"""
+    def apply_filter_click(self, m, clicked_btn):
+        """필터 적용 - 버튼 상태 업데이트"""
+        # 🔥 모든 필터 버튼 체크 해제 후 클릭된 버튼만 체크
+        for btn in self.filter_buttons:
+            btn.setChecked(False)
+        clicked_btn.setChecked(True)
+        
         self.current_filter_mode = m
         
-        # 🔥 좌우반전 상태에 따라 원본 이미지 선택
+        # 좌우반전 상태에 따라 원본 이미지 선택
         sp = [self.captured_files[i] for i in self.selected_indices if i is not None]
         fp = self.session_data.get('frame_path')
         l_key = self.session_data.get('layout_key')
@@ -1195,7 +1251,6 @@ class KioskMain(QMainWindow):
                 temp_path = photo_path.replace('.jpg', '_temp_mirror.jpg')
                 img.save(temp_path)
                 mirrored_photos.append(temp_path)
-            
             merged_path = merge_4cut_vertical(mirrored_photos, fp, fk)
         else:
             merged_path = merge_4cut_vertical(sp, fp, fk)
@@ -1768,18 +1823,28 @@ class KioskMain(QMainWindow):
             self.load_select_page()
             print("[DEBUG] 사진 선택 페이지 로드 완료")
         elif idx==5: 
-            # 🔥 좌우반전 상태 초기화
-            self.is_mirrored = False
+            # 🔥 좌우반전 상태 초기화 (ON으로 시작)
+            self.is_mirrored = True
             
             # 원본 프레임 합성
             sp = [self.captured_files[i] for i in self.selected_indices if i is not None]
             fp = self.session_data.get('frame_path')
             l_key = self.session_data.get('layout_key')
             fk = f"{self.session_data['paper_type']}_{l_key}"
-            self.final_image_path = merge_4cut_vertical(sp, fp, fk)
             
+            # 🔥 초기에 좌우반전 적용된 상태로 합성
+            mirrored_photos = []
+            for photo_path in sp:
+                img = QPixmap(photo_path)
+                img = img.toImage().mirrored(True, False)
+                img = QPixmap.fromImage(img)
+                temp_path = photo_path.replace('.jpg', '_temp_mirror.jpg')
+                img.save(temp_path)
+                mirrored_photos.append(temp_path)
+            
+            self.final_image_path = merge_4cut_vertical(mirrored_photos, fp, fk)
             self.final_print_path = self.final_image_path
-            self.current_filter_mode = "original"  # 🔥 초기 필터 모드
+            self.current_filter_mode = "original"
             
             self.result_label.setPixmap(QPixmap(self.final_image_path).scaled(
                 self.s(600), self.s(600), 
