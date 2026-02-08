@@ -734,16 +734,16 @@ class KioskMain(QMainWindow):
             b = QPushButton()
             b.setStyleSheet(f"""
                 QPushButton {{
-                    border: {self.s(2)}px solid #A8A8A8;
+                    border: none;
                     background-color: white;
                     padding: 0px;
                     margin: 0px;
                 }}
                 QPushButton:hover {{
-                    border: {self.s(2)}px solid #888888;
+                    background-color: #f5f5f5;
                 }}
                 QPushButton:pressed {{
-                    background-color: #f0f0f0;
+                    background-color: #e0e0e0;
                 }}
             """)
             
@@ -1505,22 +1505,6 @@ class KioskMain(QMainWindow):
                 
             except Exception as e:
                 print(f"프레임 오버레이 오류: {e}")
-        
-        # 8. 카운트다운 숫자 그리기
-        if hasattr(self, 'current_countdown_display') and self.current_countdown_display > 0:
-            font = QFont("Arial", self.s(250), QFont.Weight.Bold)
-            painter.setFont(font)
-            
-            text = str(self.current_countdown_display)
-            rect = QRect(0, 0, target_w, target_h)
-            
-            painter.setPen(QColor(0, 0, 0, 150))
-            painter.translate(5, 5)
-            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, text)
-            
-            painter.setPen(QColor("white"))
-            painter.translate(-5, -5)
-            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, text)
             
         painter.end()
         self.video_label.setPixmap(final_pixmap)
