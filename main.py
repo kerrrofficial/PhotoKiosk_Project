@@ -389,18 +389,18 @@ class KioskMain(QMainWindow):
             lambda: self.show_page(0)
         )
         
-        # 스크롤 영역을 담을 컨테이너
+        # 🔥 스크롤 영역을 담을 컨테이너 (좌우 동일한 여백)
         scroll_container = QWidget()
         scroll_container.setStyleSheet("background: transparent;")
         container_layout = QHBoxLayout(scroll_container)
-        container_layout.setContentsMargins(0, 0, self.s(80), 0)
+        container_layout.setContentsMargins(self.s(80), 0, self.s(80), 0)  # 🔥 좌우 80px 동일
         container_layout.setSpacing(0)
         
         self.scroll_area = QScrollArea()
-        self.scroll_area.setWidgetResizable(True)  # 🔥 다시 True로
+        self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
         
-        # 스크롤바 스타일
+        # 스크롤바 스타일 (기존 동일)
         self.scroll_area.setStyleSheet(f"""
             QScrollArea {{
                 background: transparent; 
@@ -460,15 +460,15 @@ class KioskMain(QMainWindow):
         self.frame_grid_widget = QWidget()
         self.frame_grid_widget.setStyleSheet("background: transparent;")
         
-        # 🔥 그리드 위젯을 감싸는 수평 레이아웃 (좌우 Stretch)
+        # 그리드 위젯을 감싸는 수평 레이아웃
         grid_wrapper_layout = QHBoxLayout(self.frame_grid_widget)
-        grid_wrapper_layout.setContentsMargins(0, 0, 0, 0)
+        grid_wrapper_layout.setContentsMargins(0, 0, 0, 0)  # 🔥 여백 제거
         grid_wrapper_layout.setSpacing(0)
         
-        # 🔥 좌측 여백
+        # 좌측 여백
         grid_wrapper_layout.addStretch(1)
         
-        # 🔥 실제 그리드 컨테이너
+        # 실제 그리드 컨테이너
         grid_inner_widget = QWidget()
         grid_inner_widget.setStyleSheet("background: transparent;")
         
@@ -479,7 +479,7 @@ class KioskMain(QMainWindow):
         
         grid_wrapper_layout.addWidget(grid_inner_widget)
         
-        # 🔥 우측 여백
+        # 우측 여백
         grid_wrapper_layout.addStretch(1)
         
         self.scroll_area.setWidget(self.frame_grid_widget)
@@ -489,8 +489,6 @@ class KioskMain(QMainWindow):
         main_layout.addWidget(scroll_container)
         
         return page
-
-    
 
     def create_payment_page(self):
         page = QWidget()
