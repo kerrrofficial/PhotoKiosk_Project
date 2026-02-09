@@ -1890,8 +1890,35 @@ class KioskMain(QMainWindow):
         min_q = self.admin_settings.get('print_count_min', 2)
         max_q = self.admin_settings.get('print_count_max', 12)
         
-        self.btn_minus.setEnabled(current > min_q)
-        self.btn_plus.setEnabled(current < max_q)
+        # 🔥 1. 최소 = 최대인 경우 버튼 완전 투명 (정렬 유지)
+        if min_q == max_q:
+            self.btn_minus.setEnabled(False)
+            self.btn_minus.setGraphicsEffect(self._create_opacity_effect(0.0))
+            self.btn_plus.setEnabled(False)
+            self.btn_plus.setGraphicsEffect(self._create_opacity_effect(0.0))
+            return
+        
+        # 🔥 2. 마이너스 버튼: 최소일 때 30% 투명도
+        if current <= min_q:
+            self.btn_minus.setEnabled(False)
+            self.btn_minus.setGraphicsEffect(self._create_opacity_effect(0.3))
+        else:
+            self.btn_minus.setEnabled(True)
+            self.btn_minus.setGraphicsEffect(self._create_opacity_effect(1.0))
+        
+        # 🔥 3. 플러스 버튼: 최대일 때 30% 투명도
+        if current >= max_q:
+            self.btn_plus.setEnabled(False)
+            self.btn_plus.setGraphicsEffect(self._create_opacity_effect(0.3))
+        else:
+            self.btn_plus.setEnabled(True)
+            self.btn_plus.setGraphicsEffect(self._create_opacity_effect(1.0))
+
+    def _create_opacity_effect(self, opacity):
+        """투명도 효과 생성 (배경+테두리+아이콘 모두 적용)"""
+        effect = QGraphicsOpacityEffect()
+        effect.setOpacity(opacity)
+        return effect
 
     def load_payment_page(self):
         """결제 페이지 로드 시 호출"""
