@@ -374,22 +374,123 @@ class KioskMain(QMainWindow):
         return page
 
     def create_frame_page(self):
-        page = QWidget(); self.apply_window_style(page, "common")
+        page = QWidget()
+        self.apply_window_style(page, "common")
+        
         main_layout = QVBoxLayout(page)
-        main_layout.setContentsMargins(0, 0, 0, self.s(50))
+        main_layout.setContentsMargins(0, 0, 0, self.s(60))
         main_layout.setSpacing(self.s(20))
-        self.lbl_timer_frame = self.create_header(main_layout, "Choose Your Frame", "프레임 디자인을 선택해주세요", True, lambda: self.show_page(0))
+        
+        self.lbl_timer_frame = self.create_header(
+            main_layout, 
+            "Choose Your Frame", 
+            "프레임 디자인을 선택해주세요", 
+            True, 
+            lambda: self.show_page(0)
+        )
+        
+        # 스크롤 영역을 담을 컨테이너
+        scroll_container = QWidget()
+        scroll_container.setStyleSheet("background: transparent;")
+        container_layout = QHBoxLayout(scroll_container)
+        container_layout.setContentsMargins(0, 0, self.s(80), 0)
+        container_layout.setSpacing(0)
+        
         self.scroll_area = QScrollArea()
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setStyleSheet("background: transparent; border: none;")
-        self.frame_grid_widget = QWidget(); self.frame_grid_widget.setStyleSheet("background: transparent;")
-        self.frame_grid = QGridLayout(self.frame_grid_widget)
-        self.frame_grid.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
-        self.frame_grid.setContentsMargins(self.s(50), 0, self.s(50), self.s(50))
+        self.scroll_area.setWidgetResizable(True)  # 🔥 다시 True로
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        
+        # 스크롤바 스타일
+        self.scroll_area.setStyleSheet(f"""
+            QScrollArea {{
+                background: transparent; 
+                border: none;
+            }}
+            QScrollArea > QWidget {{
+                background: transparent;
+            }}
+            QScrollBar:vertical {{
+                background: transparent;
+                width: {self.s(30)}px;
+                margin: 0px;
+                border: none;
+            }}
+            QScrollBar::handle:vertical {{
+                background: qlineargradient(
+                    spread:pad, x1:0, y1:1, x2:0, y2:0,
+                    stop:0 #B6B6B6, stop:1 #F0F0F0
+                );
+                border: {self.s(1)}px solid #787878;
+                border-radius: {self.s(15)}px;
+                min-height: {self.s(40)}px;
+            }}
+            QScrollBar::handle:vertical:hover {{
+                background: qlineargradient(
+                    spread:pad, x1:0, y1:1, x2:0, y2:0,
+                    stop:0 #A0A0A0, stop:1 #E0E0E0
+                );
+            }}
+            QScrollBar::handle:vertical:pressed {{
+                background: qlineargradient(
+                    spread:pad, x1:0, y1:1, x2:0, y2:0,
+                    stop:0 #909090, stop:1 #D0D0D0
+                );
+            }}
+            QScrollBar::add-line:vertical {{
+                height: 0px;
+                border: none;
+                background: transparent;
+            }}
+            QScrollBar::sub-line:vertical {{
+                height: 0px;
+                border: none;
+                background: transparent;
+            }}
+            QScrollBar::add-page:vertical {{
+                background: transparent;
+            }}
+            QScrollBar::sub-page:vertical {{
+                background: transparent;
+            }}
+            QScrollBar::up-arrow:vertical, QScrollBar::down-arrow:vertical {{
+                background: transparent;
+            }}
+        """)
+        
+        self.frame_grid_widget = QWidget()
+        self.frame_grid_widget.setStyleSheet("background: transparent;")
+        
+        # 🔥 그리드 위젯을 감싸는 수평 레이아웃 (좌우 Stretch)
+        grid_wrapper_layout = QHBoxLayout(self.frame_grid_widget)
+        grid_wrapper_layout.setContentsMargins(0, 0, 0, 0)
+        grid_wrapper_layout.setSpacing(0)
+        
+        # 🔥 좌측 여백
+        grid_wrapper_layout.addStretch(1)
+        
+        # 🔥 실제 그리드 컨테이너
+        grid_inner_widget = QWidget()
+        grid_inner_widget.setStyleSheet("background: transparent;")
+        
+        self.frame_grid = QGridLayout(grid_inner_widget)
+        self.frame_grid.setAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignTop)
+        self.frame_grid.setContentsMargins(0, 0, 0, self.s(50))
         self.frame_grid.setSpacing(self.s(30))
+        
+        grid_wrapper_layout.addWidget(grid_inner_widget)
+        
+        # 🔥 우측 여백
+        grid_wrapper_layout.addStretch(1)
+        
         self.scroll_area.setWidget(self.frame_grid_widget)
-        main_layout.addWidget(self.scroll_area)
+        
+        container_layout.addWidget(self.scroll_area)
+        
+        main_layout.addWidget(scroll_container)
+        
         return page
+
+    
 
     def create_payment_page(self):
         page = QWidget()
