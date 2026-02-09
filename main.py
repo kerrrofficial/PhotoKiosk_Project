@@ -389,18 +389,17 @@ class KioskMain(QMainWindow):
             lambda: self.show_page(0)
         )
         
-        # 스크롤 영역을 담을 컨테이너
+        # 🔥 컨테이너 (스크롤/일반 위젯을 담을 공간)
         scroll_container = QWidget()
         scroll_container.setStyleSheet("background: transparent;")
         container_layout = QHBoxLayout(scroll_container)
         container_layout.setContentsMargins(self.s(80), 0, self.s(80), 0)
         container_layout.setSpacing(0)
         
+        # 🔥 스크롤 영역 생성 (나중에 조건부로 사용)
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
-        
-        # 스크롤바 스타일 (기존 동일)
         self.scroll_area.setStyleSheet(f"""
             QScrollArea {{
                 background: transparent; 
@@ -457,6 +456,11 @@ class KioskMain(QMainWindow):
             }}
         """)
         
+        # 🔥 일반 위젯 (스크롤 없이 사용)
+        self.no_scroll_area = QWidget()
+        self.no_scroll_area.setStyleSheet("background: transparent;")
+        
+        # 🔥 그리드 위젯 (공통)
         self.frame_grid_widget = QWidget()
         self.frame_grid_widget.setStyleSheet("background: transparent;")
         
@@ -468,14 +472,14 @@ class KioskMain(QMainWindow):
         # 좌측 여백
         grid_wrapper_layout.addStretch(1)
         
-        # 🔥 실제 그리드 컨테이너를 담을 수직 레이아웃 (상하 중앙 정렬용)
+        # 실제 그리드 컨테이너를 담을 수직 레이아웃
         grid_vertical_container = QWidget()
         grid_vertical_container.setStyleSheet("background: transparent;")
-        self.grid_vertical_layout = QVBoxLayout(grid_vertical_container)  # 🔥 인스턴스 변수로 저장
+        self.grid_vertical_layout = QVBoxLayout(grid_vertical_container)
         self.grid_vertical_layout.setContentsMargins(0, 0, 0, 0)
         self.grid_vertical_layout.setSpacing(0)
         
-        # 🔥 상단 여백 (초기값 - load_frame_options에서 조정됨)
+        # 상단 여백
         self.grid_top_stretch = self.grid_vertical_layout.addStretch(1)
         
         # 실제 그리드 컨테이너
@@ -489,7 +493,7 @@ class KioskMain(QMainWindow):
         
         self.grid_vertical_layout.addWidget(grid_inner_widget)
         
-        # 🔥 하단 여백 (초기값 - load_frame_options에서 조정됨)
+        # 하단 여백
         self.grid_bottom_stretch = self.grid_vertical_layout.addStretch(1)
         
         grid_wrapper_layout.addWidget(grid_vertical_container)
@@ -497,9 +501,15 @@ class KioskMain(QMainWindow):
         # 우측 여백
         grid_wrapper_layout.addStretch(1)
         
-        self.scroll_area.setWidget(self.frame_grid_widget)
+        # 🔥 초기에는 일반 위젯 사용 (load_frame_options에서 전환)
+        no_scroll_layout = QVBoxLayout(self.no_scroll_area)
+        no_scroll_layout.setContentsMargins(0, 0, 0, 0)
+        no_scroll_layout.addWidget(self.frame_grid_widget)
         
-        container_layout.addWidget(self.scroll_area)
+        container_layout.addWidget(self.no_scroll_area)
+        
+        # 🔥 컨테이너 레이아웃 참조 저장
+        self.frame_container_layout = container_layout
         
         main_layout.addWidget(scroll_container)
         
@@ -1753,43 +1763,80 @@ class KioskMain(QMainWindow):
             for l_key, files in layouts.items():
                 d = os.path.join(self.asset_root, p_type, l_key)
                 if not os.path.exists(d): continue
-                fs = glob.glob(os.path.join(d, "*.png")) if "*" in files else [os.path.join(d, f) for f in files if os.path.exists(os.path.join(d, f))]
+                if "*" in files:
+                    fs = sorted(glob.glob(os.path.join(d, "*.png")))
+                else:
+                    fs = [os.path.join(d, f) for f in files if os.path.exists(os.path.join(d, f))]
                 for fp in fs:
                     if os.path.basename(fp).endswith("_btn.png"): continue
                     bn = os.path.splitext(os.path.basename(fp))[0]
                     btn_p = os.path.join(d, f"{bn}_btn.png")
                     all_frames.append({ "path": fp, "btn_path": btn_p if os.path.exists(btn_p) else fp, "paper": p_type, "layout": l_key, "name": bn })
         
-        # 🔥 프레임 개수에 따라 스크롤 및 정렬 설정
+        # 🔥 프레임 개수에 따라 스크롤/일반 위젯 전환
         frame_count = len(all_frames)
         
+        # 🔥 기존 위젯 제거
+        if self.scroll_area.parent():
+            self.frame_container_layout.removeWidget(self.scroll_area)
+            self.scroll_area.setParent(None)
+        if self.no_scroll_area.parent():
+            self.frame_container_layout.removeWidget(self.no_scroll_area)
+            self.no_scroll_area.setParent(None)
+        
         if frame_count <= 4:
-            # 🔥 4개 이하: 스크롤 완전 비활성화 + 상하 중앙 정렬
-            self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-            self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-            self.frame_grid_widget.setMinimumHeight(0)  # 최소 높이 제한 없음
-            # Stretch 활성화 (상하 여백 동일)
+            # 🔥 4개 이하: 일반 위젯 + 상하 중앙 정렬
+            # no_scroll_area에 frame_grid_widget 재부착
+            if self.frame_grid_widget.parent() == self.scroll_area:
+                self.scroll_area.takeWidget()
+            no_scroll_layout = self.no_scroll_area.layout()
+            if not no_scroll_layout:
+                no_scroll_layout = QVBoxLayout(self.no_scroll_area)
+                no_scroll_layout.setContentsMargins(0, 0, 0, 0)
+            else:
+                # 기존 위젯 제거
+                while no_scroll_layout.count():
+                    item = no_scroll_layout.takeAt(0)
+                    if item.widget():
+                        item.widget().setParent(None)
+            no_scroll_layout.addWidget(self.frame_grid_widget)
+            
+            self.frame_container_layout.addWidget(self.no_scroll_area)
             self.grid_vertical_layout.setStretch(0, 1)  # 상단
             self.grid_vertical_layout.setStretch(2, 1)  # 하단
             
         elif frame_count <= 8:
-            # 🔥 5~8개: 스크롤 완전 비활성화 + 상단 정렬
-            self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-            self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-            # 🔥 위젯 높이를 스크롤 영역보다 작게 강제 설정
-            self.frame_grid_widget.setMinimumHeight(0)
-            self.frame_grid_widget.setMaximumHeight(int(self.new_h))  # 화면 높이 제한
-            # Stretch 비활성화 (상단 정렬)
+            # 🔥 5~8개: 일반 위젯 + 상단 정렬 (스크롤 없음)
+            # no_scroll_area에 frame_grid_widget 재부착
+            if self.frame_grid_widget.parent() == self.scroll_area:
+                self.scroll_area.takeWidget()
+            no_scroll_layout = self.no_scroll_area.layout()
+            if not no_scroll_layout:
+                no_scroll_layout = QVBoxLayout(self.no_scroll_area)
+                no_scroll_layout.setContentsMargins(0, 0, 0, 0)
+            else:
+                # 기존 위젯 제거
+                while no_scroll_layout.count():
+                    item = no_scroll_layout.takeAt(0)
+                    if item.widget():
+                        item.widget().setParent(None)
+            no_scroll_layout.addWidget(self.frame_grid_widget)
+            
+            self.frame_container_layout.addWidget(self.no_scroll_area)
             self.grid_vertical_layout.setStretch(0, 0)  # 상단
             self.grid_vertical_layout.setStretch(2, 1)  # 하단
             
         else:
-            # 🔥 9개 이상: 스크롤 활성화 + 상단 정렬
-            self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
-            self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-            self.frame_grid_widget.setMinimumHeight(0)
-            self.frame_grid_widget.setMaximumHeight(16777215)  # 최대값 해제
-            # Stretch 비활성화 (상단 정렬)
+            # 🔥 9개 이상: 스크롤 영역 사용
+            # scroll_area에 frame_grid_widget 재부착
+            if self.frame_grid_widget.parent() == self.no_scroll_area:
+                no_scroll_layout = self.no_scroll_area.layout()
+                if no_scroll_layout:
+                    no_scroll_layout.removeWidget(self.frame_grid_widget)
+                    self.frame_grid_widget.setParent(None)
+            
+            self.scroll_area.setWidget(self.frame_grid_widget)
+            self.frame_container_layout.addWidget(self.scroll_area)
             self.grid_vertical_layout.setStretch(0, 0)  # 상단
             self.grid_vertical_layout.setStretch(2, 0)  # 하단
         
