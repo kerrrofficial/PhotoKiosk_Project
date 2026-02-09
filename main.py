@@ -389,11 +389,11 @@ class KioskMain(QMainWindow):
             lambda: self.show_page(0)
         )
         
-        # 🔥 스크롤 영역을 담을 컨테이너 (좌우 동일한 여백)
+        # 스크롤 영역을 담을 컨테이너
         scroll_container = QWidget()
         scroll_container.setStyleSheet("background: transparent;")
         container_layout = QHBoxLayout(scroll_container)
-        container_layout.setContentsMargins(self.s(80), 0, self.s(80), 0)  # 🔥 좌우 80px 동일
+        container_layout.setContentsMargins(self.s(80), 0, self.s(80), 0)
         container_layout.setSpacing(0)
         
         self.scroll_area = QScrollArea()
@@ -462,11 +462,21 @@ class KioskMain(QMainWindow):
         
         # 그리드 위젯을 감싸는 수평 레이아웃
         grid_wrapper_layout = QHBoxLayout(self.frame_grid_widget)
-        grid_wrapper_layout.setContentsMargins(0, 0, 0, 0)  # 🔥 여백 제거
+        grid_wrapper_layout.setContentsMargins(0, 0, 0, 0)
         grid_wrapper_layout.setSpacing(0)
         
         # 좌측 여백
         grid_wrapper_layout.addStretch(1)
+        
+        # 🔥 실제 그리드 컨테이너를 담을 수직 레이아웃 (상하 중앙 정렬용)
+        grid_vertical_container = QWidget()
+        grid_vertical_container.setStyleSheet("background: transparent;")
+        self.grid_vertical_layout = QVBoxLayout(grid_vertical_container)  # 🔥 인스턴스 변수로 저장
+        self.grid_vertical_layout.setContentsMargins(0, 0, 0, 0)
+        self.grid_vertical_layout.setSpacing(0)
+        
+        # 🔥 상단 여백 (초기값 - load_frame_options에서 조정됨)
+        self.grid_top_stretch = self.grid_vertical_layout.addStretch(1)
         
         # 실제 그리드 컨테이너
         grid_inner_widget = QWidget()
@@ -477,7 +487,12 @@ class KioskMain(QMainWindow):
         self.frame_grid.setContentsMargins(0, 0, 0, self.s(50))
         self.frame_grid.setSpacing(self.s(30))
         
-        grid_wrapper_layout.addWidget(grid_inner_widget)
+        self.grid_vertical_layout.addWidget(grid_inner_widget)
+        
+        # 🔥 하단 여백 (초기값 - load_frame_options에서 조정됨)
+        self.grid_bottom_stretch = self.grid_vertical_layout.addStretch(1)
+        
+        grid_wrapper_layout.addWidget(grid_vertical_container)
         
         # 우측 여백
         grid_wrapper_layout.addStretch(1)
@@ -1726,10 +1741,12 @@ class KioskMain(QMainWindow):
         import re; nums = re.findall(r'\d+', item['layout'])
         self.session_data['target_count'] = int(nums[0]) if nums else 4
         self.show_page(2)
-
+    
     def load_frame_options(self):
         for i in reversed(range(self.frame_grid.count())): 
-            if self.frame_grid.itemAt(i).widget(): self.frame_grid.itemAt(i).widget().setParent(None)
+            if self.frame_grid.itemAt(i).widget(): 
+                self.frame_grid.itemAt(i).widget().setParent(None)
+        
         papers = self.event_config.get("papers", {})
         all_frames = []
         for p_type, layouts in papers.items():
@@ -1743,14 +1760,59 @@ class KioskMain(QMainWindow):
                     btn_p = os.path.join(d, f"{bn}_btn.png")
                     all_frames.append({ "path": fp, "btn_path": btn_p if os.path.exists(btn_p) else fp, "paper": p_type, "layout": l_key, "name": bn })
         
+        # 🔥 프레임 개수에 따라 스크롤 및 정렬 설정
+        frame_count = len(all_frames)
+        
+        if frame_count <= 4:
+            # 🔥 4개 이하: 스크롤 완전 비활성화 + 상하 중앙 정렬
+            self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            self.frame_grid_widget.setMinimumHeight(0)  # 최소 높이 제한 없음
+            # Stretch 활성화 (상하 여백 동일)
+            self.grid_vertical_layout.setStretch(0, 1)  # 상단
+            self.grid_vertical_layout.setStretch(2, 1)  # 하단
+            
+        elif frame_count <= 8:
+            # 🔥 5~8개: 스크롤 완전 비활성화 + 상단 정렬
+            self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            # 🔥 위젯 높이를 스크롤 영역보다 작게 강제 설정
+            self.frame_grid_widget.setMinimumHeight(0)
+            self.frame_grid_widget.setMaximumHeight(int(self.new_h))  # 화면 높이 제한
+            # Stretch 비활성화 (상단 정렬)
+            self.grid_vertical_layout.setStretch(0, 0)  # 상단
+            self.grid_vertical_layout.setStretch(2, 1)  # 하단
+            
+        else:
+            # 🔥 9개 이상: 스크롤 활성화 + 상단 정렬
+            self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+            self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            self.frame_grid_widget.setMinimumHeight(0)
+            self.frame_grid_widget.setMaximumHeight(16777215)  # 최대값 해제
+            # Stretch 비활성화 (상단 정렬)
+            self.grid_vertical_layout.setStretch(0, 0)  # 상단
+            self.grid_vertical_layout.setStretch(2, 0)  # 하단
+        
         bs, fs = self.s(300), self.s(20)
         for i, item in enumerate(all_frames):
-            c = QWidget(); v = QVBoxLayout(c); v.setContentsMargins(0,0,0,0); v.setSpacing(self.s(10)); v.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            b = QPushButton(); b.setFixedSize(bs, bs)
+            c = QWidget()
+            v = QVBoxLayout(c)
+            v.setContentsMargins(0, 0, 0, 0)
+            v.setSpacing(self.s(10))
+            v.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            
+            b = QPushButton()
+            b.setFixedSize(bs, bs)
             b.setStyleSheet(f"QPushButton {{ border-image: url('{item['btn_path'].replace(os.sep, '/')}'); border-radius: {self.s(50)}px; border: none; background-color: transparent; }}")
             b.clicked.connect(lambda _, it=item: self.select_frame_and_go(it))
-            l = QLabel(item["name"]); l.setAlignment(Qt.AlignmentFlag.AlignCenter); l.setStyleSheet(f"font-family: 'Pretendard'; font-size: {fs}px; color: black; background: transparent;")
-            v.addWidget(b); v.addWidget(l)
+            
+            l = QLabel(item["name"])
+            l.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            l.setStyleSheet(f"font-family: 'Pretendard'; font-size: {fs}px; color: black; background: transparent;")
+            
+            v.addWidget(b)
+            v.addWidget(l)
+            
             self.frame_grid.addWidget(c, i//4, i%4)
 
     def update_print_qty(self, delta):
