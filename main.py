@@ -112,11 +112,15 @@ class KioskMain(QMainWindow):
         # 로드할 폰트 파일 목록
         font_files = [
             "Pretendard-Regular.otf",
-            "Pretendard-Medium.otf", 
+            "Pretendard-Light.otf",
+            "Pretendard-Medium.otf",
             "Pretendard-SemiBold.otf",
             "Pretendard-Bold.otf",
-            "Inter-Regular.otf",
-            "Inter-Bold.otf"
+            "TikTokSans16pt-Regular.otf",
+            "TikTokSans16pt-Light.otf",
+            "TikTokSans16pt-Medium.otf",
+            "TikTokSans16pt-SemiBold.otf",
+            "TikTokSans16pt-Bold.otf"
         ]
         
         loaded_count = 0
