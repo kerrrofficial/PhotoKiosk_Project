@@ -25,6 +25,10 @@ class KioskMain(QMainWindow):
     
     def __init__(self):
         super().__init__()
+
+        # 🔥 폰트 로딩 (가장 먼저!)
+        self.base_path = os.getcwd()  # 먼저 base_path 설정
+        self.load_custom_fonts()       # 폰트 로드
         
         # 0. 디자인 기준 해상도 (16:9)
         self.DESIGN_W = 1920.0
@@ -34,7 +38,6 @@ class KioskMain(QMainWindow):
         self.last_screen = None
 
         # 1. 기본 설정
-        self.base_path = os.getcwd()
         self.asset_root = os.path.join(self.base_path, "assets", "frames")
         self.click_count = 0 
         self.session_data = {}
@@ -97,6 +100,40 @@ class KioskMain(QMainWindow):
         # 초기 리사이징 및 페이지 로드
         self.calculate_layout_geometry()
         self.show_page(0)
+
+    def load_custom_fonts(self):
+        """프로젝트 내 폰트 파일 로드"""
+        font_dir = os.path.join(self.base_path, "assets", "fonts")
+        
+        if not os.path.exists(font_dir):
+            print(f"⚠️ 폰트 폴더 없음: {font_dir}")
+            return
+        
+        # 로드할 폰트 파일 목록
+        font_files = [
+            "Pretendard-Regular.otf",
+            "Pretendard-Medium.otf", 
+            "Pretendard-SemiBold.otf",
+            "Pretendard-Bold.otf",
+            "Inter-Regular.otf",
+            "Inter-Bold.otf"
+        ]
+        
+        loaded_count = 0
+        for font_file in font_files:
+            font_path = os.path.join(font_dir, font_file)
+            if os.path.exists(font_path):
+                font_id = QFontDatabase.addApplicationFont(font_path)
+                if font_id != -1:
+                    font_families = QFontDatabase.applicationFontFamilies(font_id)
+                    print(f"✅ 폰트 로드 성공: {font_families[0] if font_families else font_file}")
+                    loaded_count += 1
+                else:
+                    print(f"❌ 폰트 로드 실패: {font_file}")
+            else:
+                print(f"⚠️ 폰트 파일 없음: {font_file}")
+        
+        print(f"\n총 {loaded_count}개 폰트 로드 완료\n")
 
     # -----------------------------------------------------------
     # [Config & Setup]
