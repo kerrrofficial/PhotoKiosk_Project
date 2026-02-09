@@ -1,15 +1,21 @@
-# 가상환경 폴더 제외
-.venv/
-
-# Mac 시스템 파일 제외
-.DS_Store
-
-# 파이썬 캐시 파일 제외
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+*.so
 
-# 촬영된 원본 사진 및 결과물 제외 (코드만 저장하기 위함)
-data/original/*
-data/results/*
-!data/original/.gitkeep
-!data/results/.gitkeep
+# 데이터 파일 (용량 큰 파일들)
+data/original/*.jpg
+data/results/*.jpg
+
+# 맥 시스템 파일
+.DS_Store
+
+# VS Code 설정
+.vscode/
+
+# 가상환경
+venv/
+env/
