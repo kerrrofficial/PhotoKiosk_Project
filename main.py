@@ -302,13 +302,13 @@ class KioskMain(QMainWindow):
         title_box.setGeometry(0, 0, int(self.new_w), header_height)
         
         lbl_title = QLabel(title_text, title_box)
-        lbl_title.setStyleSheet(f"font-family: 'TikTok Sans'; font-size: {self.s(40)}pt; font-weight: 600; color: black; background: transparent;")
+        lbl_title.setStyleSheet(f"font-family: 'TikTok Sans 16pt SemiBold'; font-size: {self.s(40)}pt; color: black; background: transparent;")
         lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl_title.setGeometry(0, self.s(130), int(self.new_w), self.s(60))
         
         if sub_text:
             lbl_sub = QLabel(sub_text, title_box)
-            lbl_sub.setStyleSheet(f"font-family: 'Pretendard'; font-size: {self.s(28)}pt; font-weight: 500; color: #555; background: transparent;")
+            lbl_sub.setStyleSheet(f"font-family: 'Pretendard SemiBold'; font-size: {self.s(28)}pt; color: #555; background: transparent;")
             lbl_sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
             lbl_sub.setGeometry(0, self.s(130 + 60 + 13), int(self.new_w), self.s(40))
 
@@ -332,7 +332,7 @@ class KioskMain(QMainWindow):
         lbl_t.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         lbl_n = QLabel("")
-        lbl_n.setStyleSheet(f"font-family: 'TikTok Sans'; font-size: {self.s(56)}pt; font-weight: 500; color: black; border: none; background: transparent;")
+        lbl_n.setStyleSheet(f"font-family: 'TikTok Sans 16pt SemiBold'; font-size: {self.s(56)}pt; color: black; border: none; background: transparent;")
         lbl_n.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         t_layout.addWidget(lbl_t)
@@ -715,9 +715,8 @@ class KioskMain(QMainWindow):
         self.lbl_timer_header.setGeometry(0, 0, int(self.new_w), self.s(130))
         self.lbl_timer_header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_timer_header.setStyleSheet(f"""
-            font-family: 'TikTok Sans';
+            font-family: 'TikTok Sans 16pt SemiBold';
             font-size: {self.s(56)}pt;
-            font-weight: bold;
             color: black;
             background: transparent;
         """)
@@ -733,9 +732,8 @@ class KioskMain(QMainWindow):
         )
         self.lbl_shot_count.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.lbl_shot_count.setStyleSheet(f"""
-            font-family: 'TikTok Sans';
+            font-family: 'TikTok Sans 16pt SemiBold';
             font-size: {self.s(40)}pt;
-            font-weight: bold;
             color: #313131;
             background: transparent;
         """)
