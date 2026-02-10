@@ -302,7 +302,7 @@ class KioskMain(QMainWindow):
         title_box.setGeometry(0, 0, int(self.new_w), header_height)
         
         lbl_title = QLabel(title_text, title_box)
-        lbl_title.setStyleSheet(f"font-family: 'TikTok Sans 16pt Bold'; font-size: {self.s(40)}pt; color: black; background: transparent;")
+        lbl_title.setStyleSheet(f"font-family: 'TikTok Sans 16pt SemiBold'; font-size: {self.s(40)}pt; color: black; background: transparent;")
         lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl_title.setGeometry(0, self.s(130), int(self.new_w), self.s(60))
         
@@ -732,7 +732,7 @@ class KioskMain(QMainWindow):
         )
         self.lbl_shot_count.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.lbl_shot_count.setStyleSheet(f"""
-            font-family: 'TikTok Sans 16pt Bold';
+            font-family: 'TikTok Sans 16pt SemiBold';
             font-size: {self.s(40)}pt;
             color: #313131;
             background: transparent;
