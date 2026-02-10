@@ -61,7 +61,12 @@ class KioskMain(QMainWindow):
             'price_full': 4000, 'price_half': 4000,
             'coin_price_per_sheet': 1,
             'print_count_min': 2, 'print_count_max': 12,
-            'use_filter_page': True, 'save_raw_files': False
+            'use_filter_page': True, 'save_raw_files': False,
+            # 🔥 카메라 설정 추가
+            'camera_index': 0,      # check_camera.py로 확인한 인덱스
+            'camera_width': 1920,   # 해상도
+            'camera_height': 1080,
+            
         }
 
         self.event_config = self.load_event_config() 
@@ -1681,6 +1686,48 @@ class KioskMain(QMainWindow):
         self.admin_layout.addWidget(l4)
         add_row("총 촬영 컷수", "total_shoot_count", 1, 12, step=1)
         add_row("촬영 타이머 (초)", "shot_countdown", 1, 10, step=1)
+
+        # 카메라 설정 섹션
+        l5 = QLabel("카메라 설정")
+        l5.setStyleSheet(f"font-size: {self.fs(40)}px; font-weight: 600; margin-top: 20px; color: black;")
+        self.admin_layout.addWidget(l5)
+        
+        # 카메라 인덱스 설정
+        add_row("카메라 인덱스", "camera_index", 0, 5, step=1)
+        
+        # 카메라 테스트 버튼
+        test_camera_row = QWidget()
+        test_camera_layout = QHBoxLayout(test_camera_row)
+        test_camera_layout.setContentsMargins(0, 0, 0, 0)
+        
+        test_lbl = QLabel("카메라 연결 테스트")
+        test_lbl.setFixedWidth(self.s(400))
+        test_lbl.setStyleSheet(f"font-size: {self.fs(32)}px; font-weight: 600; color: black;")
+        
+        btn_test = QPushButton("테스트 실행")
+        btn_test.setFixedSize(self.s(200), self.s(60))
+        btn_test.setStyleSheet(f"""
+            QPushButton {{
+                font-size: {self.fs(28)}px;
+                background-color: #2196F3;
+                color: white;
+                border-radius: 10px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background-color: #1976D2;
+            }}
+            QPushButton:pressed {{
+                background-color: #0D47A1;
+            }}
+        """)
+        btn_test.clicked.connect(self.test_camera_connection)
+        
+        test_camera_layout.addWidget(test_lbl)
+        test_camera_layout.addWidget(btn_test)
+        test_camera_layout.addStretch()
+        
+        self.admin_layout.addWidget(test_camera_row)
         
         scroll.setWidget(panel)
         layout.addWidget(scroll)
@@ -2376,6 +2423,73 @@ class KioskMain(QMainWindow):
         
         # 즉시 1회 실행
         self.process_countdown()
+
+    def test_camera_connection(self):
+        """관리자 페이지에서 카메라 연결 테스트"""
+        camera_index = self.admin_settings.get('camera_index', 0)
+        
+        import cv2
+        import platform
+        
+        # 플랫폼별 백엔드로 카메라 열기
+        if platform.system() == 'Darwin':  # macOS
+            cap = cv2.VideoCapture(camera_index, cv2.CAP_AVFOUNDATION)
+        elif platform.system() == 'Windows':
+            cap = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW)
+        else:
+            cap = cv2.VideoCapture(camera_index)
+        
+        if cap.isOpened():
+            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            backend = cap.getBackendName()
+            
+            # 프레임 1장 읽어보기
+            ret, frame = cap.read()
+            
+            msg = f"✅ 카메라 #{camera_index} 연결 성공!\n\n"
+            msg += f"해상도: {width} x {height}\n"
+            msg += f"FPS: {fps:.1f}\n"
+            msg += f"Backend: {backend}\n"
+            msg += f"프레임 읽기: {'성공' if ret else '실패'}"
+            
+            QMessageBox.information(
+                self,
+                "카메라 테스트",
+                msg,
+                QMessageBox.StandardButton.Ok
+            )
+            cap.release()
+        else:
+            msg = f"❌ 카메라 #{camera_index} 연결 실패!\n\n"
+            msg += "해결방법:\n"
+            msg += "1. Canon EOS Webcam Utility 설치 확인\n"
+            msg += "2. 카메라 USB 연결 확인\n"
+            msg += "3. 카메라를 동영상 모드로 설정\n"
+            msg += "4. check_camera.py로 올바른 인덱스 확인"
+            
+            QMessageBox.warning(
+                self,
+                "카메라 테스트",
+                msg,
+                QMessageBox.StandardButton.Ok
+            )
+
+    def on_camera_error(self, error_message):
+        """카메라 오류 발생 시 처리 (선택사항)"""
+        print(f"[CAMERA ERROR] {error_message}")
+        
+        QMessageBox.critical(
+            self,
+            "카메라 오류",
+            error_message,
+            QMessageBox.StandardButton.Ok
+        )
+        
+        # 메인 화면으로 복귀
+        self.show_page(0)
+
 
     def process_countdown(self):
         """1초마다 호출: 숫자 감소 -> 촬영"""
