@@ -335,7 +335,7 @@ class KioskMain(QMainWindow):
         
         if sub_text:
             lbl_sub = QLabel(sub_text, title_box)
-            lbl_sub.setStyleSheet(f"font-family: 'Pretendard SemiBold'; font-size: {self.fs(28)}pt; color: #555; background: transparent;")
+            lbl_sub.setStyleSheet(f"font-family: 'Pretendard SemiBold'; font-size: {self.fs(24)}pt; color: #555; background: transparent;")
             lbl_sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
             lbl_sub.setGeometry(0, self.s(130 + 60 + 13), int(self.new_w), self.s(40))
 
@@ -355,7 +355,7 @@ class KioskMain(QMainWindow):
         t_layout.setSpacing(0)
         
         lbl_t = QLabel("TIMER")
-        lbl_t.setStyleSheet(f"font-family: 'Pretendard SemiBold'; font-size: {self.fs(26)}pt; color: #828282; border: none; background: transparent;")
+        lbl_t.setStyleSheet(f"font-family: 'Pretendard SemiBold'; font-size: {self.fs(20)}pt; color: #828282; border: none; background: transparent;")
         lbl_t.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         lbl_n = QLabel("")
@@ -383,7 +383,7 @@ class KioskMain(QMainWindow):
         
         lbl = QLabel("뒤로\n가기", btn)
         lbl.setGeometry(self.s(61), self.s(42), self.s(60), self.s(60))
-        lbl.setStyleSheet(f"color: #C2C2C2; font-family: 'Pretendard SemiBold'; font-size: {self.fs(20)}pt; line-height: 120%; border: none; background: transparent;")
+        lbl.setStyleSheet(f"color: #C2C2C2; font-family: 'Pretendard SemiBold'; font-size: {self.fs(18)}pt; line-height: 120%; border: none; background: transparent;")
         
         return btn
 
