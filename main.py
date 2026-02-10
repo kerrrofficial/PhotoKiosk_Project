@@ -1,5 +1,9 @@
 import sys
 import os
+
+os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "1"
+os.environ["QT_SCALE_FACTOR"] = "1"
+
 import platform
 import json
 import glob
