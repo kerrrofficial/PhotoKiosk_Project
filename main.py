@@ -1,5 +1,6 @@
 import sys
 import os
+import platform
 import json
 import glob
 import random
@@ -2469,6 +2470,16 @@ class KioskMain(QMainWindow):
         QTimer.singleShot(1000, self.prepare_next_shot)
 
 if __name__ == "__main__":
+    # 🔥 윈도우 고해상도 DPI 대응
+    if hasattr(Qt, 'HighDpiScaleFactorRoundingPolicy'):
+        QApplication.setHighDpiScaleFactorRoundingPolicy(
+            Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+        )
+    
+    # 🔥 고해상도 디스플레이 지원 활성화
+    QApplication.setAttribute(Qt.ApplicationAttribute.AA_EnableHighDpiScaling, True)
+    QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps, True)
+    
     app = QApplication(sys.argv)
     kiosk = KioskMain()
     kiosk.show()
