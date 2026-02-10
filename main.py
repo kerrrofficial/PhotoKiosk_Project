@@ -139,6 +139,15 @@ class KioskMain(QMainWindow):
         
         print(f"\n총 {loaded_count}개 폰트 로드 완료\n")
 
+            # 🔥 디버깅: 시스템에서 사용 가능한 모든 폰트 출력
+        print("=" * 50)
+        print("사용 가능한 폰트 패밀리:")
+        all_families = QFontDatabase.families()
+        for family in all_families:
+            if 'Pretendard' in family or 'TikTok' in family:
+                print(f"  - {family}")
+        print("=" * 50)
+
     # -----------------------------------------------------------
     # [Config & Setup]
     # -----------------------------------------------------------
