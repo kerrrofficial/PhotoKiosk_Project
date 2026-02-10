@@ -295,6 +295,28 @@ class KioskMain(QMainWindow):
     def s(self, size):
         """ 1920x1080 기준 픽셀 값을 현재 비율에 맞춰 변환 """
         return int(size * self.scale_factor)
+    
+    def fs(self, size):
+        """
+        폰트 전용 스케일링 (Font Scale)
+        
+        윈도우 기준으로 최적화
+        맥에서는 약간 크게 보이지만, 윈도우에서 정상 크기로 표시됨
+        
+        Args:
+            size: 1920x1080 기준 폰트 크기 (pt)
+        
+        Returns:
+            int: 스케일 적용 + OS 보정된 폰트 크기
+        """
+        scaled = size * self.scale_factor
+        
+        # 🔥 윈도우 기준 최적화
+        # 맥에서는 약 12% 크게 보이지만, 윈도우에서 정상 크기
+        if platform.system() == 'Darwin':  # macOS
+            scaled *= 1.12
+        
+        return int(scaled)
 
     def create_header(self, parent_layout, title_text, sub_text="", show_back=True, back_callback=None):
         header_widget = QWidget()
@@ -307,13 +329,13 @@ class KioskMain(QMainWindow):
         title_box.setGeometry(0, 0, int(self.new_w), header_height)
         
         lbl_title = QLabel(title_text, title_box)
-        lbl_title.setStyleSheet(f"font-family: 'TikTok Sans 16pt SemiBold'; font-size: {self.s(40)}pt; color: black; background: transparent;")
+        lbl_title.setStyleSheet(f"font-family: 'TikTok Sans 16pt SemiBold'; font-size: {self.fs(40)}pt; color: black; background: transparent;")
         lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl_title.setGeometry(0, self.s(130), int(self.new_w), self.s(60))
         
         if sub_text:
             lbl_sub = QLabel(sub_text, title_box)
-            lbl_sub.setStyleSheet(f"font-family: 'Pretendard SemiBold'; font-size: {self.s(28)}pt; color: #555; background: transparent;")
+            lbl_sub.setStyleSheet(f"font-family: 'Pretendard SemiBold'; font-size: {self.fs(28)}pt; color: #555; background: transparent;")
             lbl_sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
             lbl_sub.setGeometry(0, self.s(130 + 60 + 13), int(self.new_w), self.s(40))
 
@@ -333,11 +355,11 @@ class KioskMain(QMainWindow):
         t_layout.setSpacing(0)
         
         lbl_t = QLabel("TIMER")
-        lbl_t.setStyleSheet(f"font-family: 'Pretendard SemiBold'; font-size: {self.s(26)}pt; color: #828282; border: none; background: transparent;")
+        lbl_t.setStyleSheet(f"font-family: 'Pretendard SemiBold'; font-size: {self.fs(26)}pt; color: #828282; border: none; background: transparent;")
         lbl_t.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         lbl_n = QLabel("")
-        lbl_n.setStyleSheet(f"font-family: 'TikTok Sans 16pt SemiBold'; font-size: {self.s(56)}pt; color: black; border: none; background: transparent;")
+        lbl_n.setStyleSheet(f"font-family: 'TikTok Sans 16pt SemiBold'; font-size: {self.fs(56)}pt; color: black; border: none; background: transparent;")
         lbl_n.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         t_layout.addWidget(lbl_t)
@@ -361,7 +383,7 @@ class KioskMain(QMainWindow):
         
         lbl = QLabel("뒤로\n가기", btn)
         lbl.setGeometry(self.s(61), self.s(42), self.s(60), self.s(60))
-        lbl.setStyleSheet(f"color: #C2C2C2; font-family: 'Pretendard SemiBold'; font-size: {self.s(24)}pt; line-height: 120%; border: none; background: transparent;")
+        lbl.setStyleSheet(f"color: #C2C2C2; font-family: 'Pretendard SemiBold'; font-size: {self.fs(24)}pt; line-height: 120%; border: none; background: transparent;")
         
         return btn
 
@@ -629,7 +651,7 @@ class KioskMain(QMainWindow):
             lbl = QLabel(text)
             lbl.setFixedSize(self.s(500), self.s(140))
             lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            lbl.setStyleSheet(f"background-color: #E3E3E3; border: none; border-radius: {self.s(20)}px; font-family: 'Pretendard SemiBold'; font-size: {self.s(56)}px; color: black;")
+            lbl.setStyleSheet(f"background-color: #E3E3E3; border: none; border-radius: {self.s(20)}px; font-family: 'Pretendard SemiBold'; font-size: {self.fs(56)}px; color: black;")
             display_stack_layout.addWidget(lbl)
             if attr == 'lbl_qty': self.c_qty = self.lbl_qty = lbl
             else: self.c_prc = self.lbl_price = lbl
@@ -678,14 +700,14 @@ class KioskMain(QMainWindow):
         self.btn_close_cp = QPushButton("X", self.coupon_widget)
         self.btn_close_cp.setGeometry(self.s(340), self.s(10), self.s(50), self.s(50))
         self.btn_close_cp.clicked.connect(self.coupon_widget.hide)
-        self.btn_close_cp.setStyleSheet(f"font-size: {self.s(24)}px; font-weight: bold; background: transparent; color: #999; border: none;")
+        self.btn_close_cp.setStyleSheet(f"font-size: {self.fs(24)}px; font-weight: bold; background: transparent; color: #999; border: none;")
         cl = QVBoxLayout(self.coupon_widget); cl.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-        self.input_coupon = QLineEdit(); self.input_coupon.setFixedSize(self.s(400), self.s(80)); self.input_coupon.setAlignment(Qt.AlignmentFlag.AlignCenter); self.input_coupon.setStyleSheet(f"font-size: {self.s(30)}px; border-radius: {self.s(10)}px; border: 2px solid #ccc;")
+        self.input_coupon = QLineEdit(); self.input_coupon.setFixedSize(self.s(400), self.s(80)); self.input_coupon.setAlignment(Qt.AlignmentFlag.AlignCenter); self.input_coupon.setStyleSheet(f"font-size: {self.fs(30)}px; border-radius: {self.s(10)}px; border: 2px solid #ccc;")
         cl.addWidget(self.input_coupon)
         kp = QWidget(); kl = QGridLayout(kp); kl.setSpacing(self.s(10))
         for i, k in enumerate(['1','2','3','4','5','6','7','8','9','C','0','OK']):
             b = QPushButton(k); b.setFixedSize(self.s(80), self.s(80))
-            b.setStyleSheet(f"font-size: {self.s(30)}px; font-weight: bold; border-radius: {self.s(10)}px; background-color: {'#ffccdd' if k=='OK' else 'white'}; border: 1px solid #999;")
+            b.setStyleSheet(f"font-size: {self.fs(30)}px; font-weight: bold; border-radius: {self.s(10)}px; background-color: {'#ffccdd' if k=='OK' else 'white'}; border: 1px solid #999;")
             if k=='OK': b.clicked.connect(self.process_coupon_ok)
             elif k=='C': b.clicked.connect(self.input_coupon.clear)
             else: b.clicked.connect(lambda _, x=k: self.input_coupon.setText(self.input_coupon.text()+x))
@@ -721,7 +743,7 @@ class KioskMain(QMainWindow):
         self.lbl_timer_header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_timer_header.setStyleSheet(f"""
             font-family: 'TikTok Sans 16pt SemiBold';
-            font-size: {self.s(56)}pt;
+            font-size: {self.fs(56)}pt;
             color: black;
             background: transparent;
         """)
@@ -738,7 +760,7 @@ class KioskMain(QMainWindow):
         self.lbl_shot_count.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.lbl_shot_count.setStyleSheet(f"""
             font-family: 'TikTok Sans 16pt SemiBold';
-            font-size: {self.s(40)}pt;
+            font-size: {self.fs(40)}pt;
             color: #313131;
             background: transparent;
         """)
@@ -1052,7 +1074,7 @@ class KioskMain(QMainWindow):
                     pt = QPainter(cropped_pix)
                     pt.fillRect(cropped_pix.rect(), QColor(0, 0, 0, 100))
                     pt.setPen(QPen(Qt.GlobalColor.green, self.s(40)))
-                    pt.setFont(QFont("Arial", self.s(100), QFont.Weight.Bold))
+                    pt.setFont(QFont("Arial", self.fs(100), QFont.Weight.Bold))
                     pt.drawText(cropped_pix.rect(), Qt.AlignmentFlag.AlignCenter, str(count))
                     pt.end()
                 
@@ -1240,7 +1262,7 @@ class KioskMain(QMainWindow):
         lbl_filter_title.setGeometry(self.s(40), self.s(40), self.s(200), self.s(28))
         lbl_filter_title.setStyleSheet(f"""
             font-family: 'Pretendard SemiBold';
-            font-size: {self.s(28)}pt;
+            font-size: {self.fs(28)}pt;
             color: rgba(0, 0, 0, 0.5);
             background: transparent;
         """)
@@ -1282,7 +1304,7 @@ class KioskMain(QMainWindow):
                     background-color: #474747;
                     color: rgba(255, 255, 255, 0.5);
                     font-family: 'Pretendard SemiBold';
-                    font-size: {self.s(28)}pt;
+                    font-size: {self.fs(28)}pt;
                     border-radius: {self.s(20)}px;
                     border: none;
                 }} 
@@ -1317,7 +1339,7 @@ class KioskMain(QMainWindow):
         lbl_mirror_title.setGeometry(self.s(40), self.s(40), self.s(200), self.s(28))
         lbl_mirror_title.setStyleSheet(f"""
             font-family: 'Pretendard SemiBold';
-            font-size: {self.s(28)}pt;
+            font-size: {self.fs(28)}pt;
             color: rgba(0, 0, 0, 0.5);
             background: transparent;
         """)
@@ -1335,7 +1357,7 @@ class KioskMain(QMainWindow):
                 background-color: #474747;
                 color: rgba(255, 255, 255, 0.5);
                 font-family: 'Pretendard SemiBold';
-                font-size: {self.s(28)}pt;
+                font-size: {self.fs(28)}pt;
                 border-radius: {self.s(20)}px;
                 border: none;
             }} 
@@ -1358,7 +1380,7 @@ class KioskMain(QMainWindow):
                 background-color: #474747;
                 color: rgba(255, 255, 255, 0.5);
                 font-family: 'Pretendard SemiBold';
-                font-size: {self.s(28)}pt;
+                font-size: {self.fs(28)}pt;
                 border-radius: {self.s(20)}px;
                 border: none;
             }} 
@@ -1470,8 +1492,8 @@ class KioskMain(QMainWindow):
     def create_printing_page(self):
         page = QWidget(); self.apply_window_style(page, "print")
         layout = QVBoxLayout(page); layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        t = QLabel("Print"); t.setStyleSheet(f"font-size: {self.s(110)}px; font-weight: 600;")
-        s = QLabel("잠시만 기다려주세요"); s.setStyleSheet(f"font-size: {self.s(65)}px; font-weight: 600;")
+        t = QLabel("Print"); t.setStyleSheet(f"font-size: {self.fs(110)}px; font-weight: 600;")
+        s = QLabel("잠시만 기다려주세요"); s.setStyleSheet(f"font-size: {self.fs(65)}px; font-weight: 600;")
         self.lbl_print_preview = QLabel(); self.lbl_print_preview.setFixedSize(self.s(500), self.s(750)); self.lbl_print_preview.setStyleSheet("border: 5px solid white; border-radius: 20px; background: #ccc;"); self.lbl_print_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(t, alignment=Qt.AlignmentFlag.AlignCenter); layout.addWidget(s, alignment=Qt.AlignmentFlag.AlignCenter); layout.addSpacing(self.s(50)); layout.addWidget(self.lbl_print_preview, alignment=Qt.AlignmentFlag.AlignCenter)
         return page
@@ -1483,7 +1505,7 @@ class KioskMain(QMainWindow):
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         lbl = QLabel("🔧 관리자 설정")
-        lbl.setStyleSheet(f"font-size: {self.s(80)}px; font-weight: 600; color: #333;")
+        lbl.setStyleSheet(f"font-size: {self.fs(80)}px; font-weight: 600; color: #333;")
         layout.addWidget(lbl)
         
         scroll = QScrollArea()
@@ -1505,18 +1527,18 @@ class KioskMain(QMainWindow):
             
             l = QLabel(t)
             l.setFixedWidth(self.s(400))
-            l.setStyleSheet(f"font-size: {self.s(32)}px; font-weight: 600; color: black;")
+            l.setStyleSheet(f"font-size: {self.fs(32)}px; font-weight: 600; color: black;")
             
             v = QLabel(str(self.admin_settings.get(k)))
             v.setFixedWidth(self.s(100))
-            v.setStyleSheet(f"font-size: {self.s(32)}px; color: blue; background: transparent;")
+            v.setStyleSheet(f"font-size: {self.fs(32)}px; color: blue; background: transparent;")
             v.setAlignment(Qt.AlignmentFlag.AlignCenter)
             
             b1 = QPushButton("-")
             b1.setFixedSize(self.s(60), self.s(60))
             b1.setStyleSheet(f"""
                 QPushButton {{
-                    font-size: {self.s(36)}px;
+                    font-size: {self.fs(36)}px;
                     font-weight: bold;
                     background-color: #E0E0E0;
                     border: 2px solid #999;
@@ -1535,7 +1557,7 @@ class KioskMain(QMainWindow):
             b2.setFixedSize(self.s(60), self.s(60))
             b2.setStyleSheet(f"""
                 QPushButton {{
-                    font-size: {self.s(36)}px;
+                    font-size: {self.fs(36)}px;
                     font-weight: bold;
                     background-color: #E0E0E0;
                     border: 2px solid #999;
@@ -1574,17 +1596,17 @@ class KioskMain(QMainWindow):
             h = QHBoxLayout(r)
             l = QLabel(t)
             l.setFixedWidth(self.s(400))
-            l.setStyleSheet(f"font-size: {self.s(32)}px; font-weight: 600; color: black;")
+            l.setStyleSheet(f"font-size: {self.fs(32)}px; font-weight: 600; color: black;")
             s = self.admin_settings.get(k)
             b = QPushButton("ON" if s else "OFF")
             b.setFixedSize(self.s(150), self.s(60))
-            b.setStyleSheet(f"font-size: {self.s(30)}px; color: white; background-color: {'#4CAF50' if s else '#F44336'}; border-radius: 10px;")
+            b.setStyleSheet(f"font-size: {self.fs(30)}px; color: white; background-color: {'#4CAF50' if s else '#F44336'}; border-radius: 10px;")
             
             def tog():
                 n = 0 if b.text() == "ON" else 1
                 self.admin_settings[k] = n
                 b.setText("ON" if n else "OFF")
-                b.setStyleSheet(f"font-size: {self.s(30)}px; color: white; background-color: {'#4CAF50' if n else '#F44336'}; border-radius: 10px;")
+                b.setStyleSheet(f"font-size: {self.fs(30)}px; color: white; background-color: {'#4CAF50' if n else '#F44336'}; border-radius: 10px;")
             
             b.clicked.connect(tog)
             h.addWidget(l)
@@ -1596,12 +1618,12 @@ class KioskMain(QMainWindow):
             h = QHBoxLayout(r)
             l = QLabel(t)
             l.setFixedWidth(self.s(400))
-            l.setStyleSheet(f"font-size: {self.s(32)}px; font-weight: 600; color: black;")
+            l.setStyleSheet(f"font-size: {self.fs(32)}px; font-weight: 600; color: black;")
             c = QComboBox()
             c.setFixedHeight(self.s(60))
             c.setStyleSheet(f"""
                 QComboBox {{
-                    font-size: {self.s(30)}px;
+                    font-size: {self.fs(30)}px;
                     color: black;
                     background-color: #f0f0f0;
                     border: 2px solid #ccc;
@@ -1630,14 +1652,14 @@ class KioskMain(QMainWindow):
 
         # 🔥 기본 설정
         l1 = QLabel("기본 설정")
-        l1.setStyleSheet(f"font-size: {self.s(40)}px; font-weight: 600; margin-top: 20px; color: black;")
+        l1.setStyleSheet(f"font-size: {self.fs(40)}px; font-weight: 600; margin-top: 20px; color: black;")
         self.admin_layout.addWidget(l1)
         add_cmb("결제 방식", "payment_mode", {1: "유상결제 (카드/현금/쿠폰)", 0: "무상결제 (이벤트)", 2: "코인결제 (코인기)"})
         add_row("코인 단가", "coin_price_per_sheet", 1, 10)
         
         # 🔥 가격 설정
         l2 = QLabel("가격 설정")
-        l2.setStyleSheet(f"font-size: {self.s(40)}px; font-weight: 600; margin-top: 20px; color: black;")
+        l2.setStyleSheet(f"font-size: {self.fs(40)}px; font-weight: 600; margin-top: 20px; color: black;")
         self.admin_layout.addWidget(l2)
         add_row("Full Price", "price_full", 0, 20000, 500)
         add_row("Half Price", "price_half", 0, 20000, 500)
@@ -1648,14 +1670,14 @@ class KioskMain(QMainWindow):
         
         # 🔥 출력 수량 설정
         l3 = QLabel("출력 수량 설정 (2의 배수)")
-        l3.setStyleSheet(f"font-size: {self.s(40)}px; font-weight: 600; margin-top: 20px; color: black;")
+        l3.setStyleSheet(f"font-size: {self.fs(40)}px; font-weight: 600; margin-top: 20px; color: black;")
         self.admin_layout.addWidget(l3)
         add_row("최소 수량 (Min)", "print_count_min", 2, 12, step=2)
         add_row("최대 수량 (Max)", "print_count_max", 2, 12, step=2)
         
         # 🔥 촬영 설정
         l4 = QLabel("촬영 설정")
-        l4.setStyleSheet(f"font-size: {self.s(40)}px; font-weight: 600; margin-top: 20px; color: black;")
+        l4.setStyleSheet(f"font-size: {self.fs(40)}px; font-weight: 600; margin-top: 20px; color: black;")
         self.admin_layout.addWidget(l4)
         add_row("총 촬영 컷수", "total_shoot_count", 1, 12, step=1)
         add_row("촬영 타이머 (초)", "shot_countdown", 1, 10, step=1)
@@ -1665,7 +1687,7 @@ class KioskMain(QMainWindow):
         
         ex = QPushButton("나가기 (저장)")
         ex.setFixedSize(self.s(500), self.s(100))
-        ex.setStyleSheet(f"font-size: {self.s(45)}px; background: #ff007f; color: white; border-radius: 20px;")
+        ex.setStyleSheet(f"font-size: {self.fs(45)}px; background: #ff007f; color: white; border-radius: 20px;")
         ex.clicked.connect(lambda: self.show_page(0))
         layout.addWidget(ex)
         
