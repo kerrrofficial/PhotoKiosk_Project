@@ -276,7 +276,7 @@ class KioskMain(QMainWindow):
             self.stack.removeWidget(old); self.stack.insertWidget(7, self.page_admin); self.stack.setCurrentIndex(7)
 
     # -----------------------------------------------------------
-    # [Helper Methods] - 스케일링 함수 (s)
+    # [Helper Methods] - 스케일링 함수 (ss
     # -----------------------------------------------------------
     def s(self, size):
         """ 1920x1080 기준 픽셀 값을 현재 비율에 맞춰 변환 """
