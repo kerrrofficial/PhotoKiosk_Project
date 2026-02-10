@@ -328,7 +328,7 @@ class KioskMain(QMainWindow):
         t_layout.setSpacing(0)
         
         lbl_t = QLabel("TIMER")
-        lbl_t.setStyleSheet(f"font-family: 'Pretendard'; font-size: {self.s(26)}pt; font-weight: 600; color: #828282; border: none; background: transparent;")
+        lbl_t.setStyleSheet(f"font-family: 'Pretendard SemiBold'; font-size: {self.s(26)}pt; color: #828282; border: none; background: transparent;")
         lbl_t.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         lbl_n = QLabel("")
@@ -356,7 +356,7 @@ class KioskMain(QMainWindow):
         
         lbl = QLabel("뒤로\n가기", btn)
         lbl.setGeometry(self.s(61), self.s(42), self.s(60), self.s(60))
-        lbl.setStyleSheet(f"color: #C2C2C2; font-family: 'Pretendard'; font-size: {self.s(24)}pt; font-weight: 600; line-height: 120%; border: none; background: transparent;")
+        lbl.setStyleSheet(f"color: #C2C2C2; font-family: 'Pretendard SemiBold'; font-size: {self.s(24)}pt; line-height: 120%; border: none; background: transparent;")
         
         return btn
 
@@ -624,7 +624,7 @@ class KioskMain(QMainWindow):
             lbl = QLabel(text)
             lbl.setFixedSize(self.s(500), self.s(140))
             lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            lbl.setStyleSheet(f"background-color: #E3E3E3; border: none; border-radius: {self.s(20)}px; font-family: 'Pretendard'; font-size: {self.s(56)}px; font-weight: 600; color: black;")
+            lbl.setStyleSheet(f"background-color: #E3E3E3; border: none; border-radius: {self.s(20)}px; font-family: 'Pretendard SemiBold'; font-size: {self.s(56)}px; color: black;")
             display_stack_layout.addWidget(lbl)
             if attr == 'lbl_qty': self.c_qty = self.lbl_qty = lbl
             else: self.c_prc = self.lbl_price = lbl
@@ -1234,7 +1234,7 @@ class KioskMain(QMainWindow):
         lbl_filter_title = QLabel("필터", filter_bg)
         lbl_filter_title.setGeometry(self.s(40), self.s(40), self.s(200), self.s(28))
         lbl_filter_title.setStyleSheet(f"""
-            font-family: 'Pretendard';
+            font-family: 'Pretendard SemiBold';
             font-size: {self.s(28)}pt;
             color: rgba(0, 0, 0, 0.5);
             background: transparent;
@@ -1276,9 +1276,8 @@ class KioskMain(QMainWindow):
                 QPushButton {{ 
                     background-color: #474747;
                     color: rgba(255, 255, 255, 0.5);
-                    font-family: 'Pretendard';
+                    font-family: 'Pretendard SemiBold';
                     font-size: {self.s(28)}pt;
-                    font-weight: 600;
                     border-radius: {self.s(20)}px;
                     border: none;
                 }} 
@@ -1312,7 +1311,7 @@ class KioskMain(QMainWindow):
         lbl_mirror_title = QLabel("좌우반전", mirror_bg)
         lbl_mirror_title.setGeometry(self.s(40), self.s(40), self.s(200), self.s(28))
         lbl_mirror_title.setStyleSheet(f"""
-            font-family: 'Pretendard';
+            font-family: 'Pretendard SemiBold';
             font-size: {self.s(28)}pt;
             color: rgba(0, 0, 0, 0.5);
             background: transparent;
@@ -1330,9 +1329,8 @@ class KioskMain(QMainWindow):
             QPushButton {{ 
                 background-color: #474747;
                 color: rgba(255, 255, 255, 0.5);
-                font-family: 'Pretendard';
+                font-family: 'Pretendard SemiBold';
                 font-size: {self.s(28)}pt;
-                font-weight: 600;
                 border-radius: {self.s(20)}px;
                 border: none;
             }} 
@@ -1354,9 +1352,8 @@ class KioskMain(QMainWindow):
             QPushButton {{ 
                 background-color: #474747;
                 color: rgba(255, 255, 255, 0.5);
-                font-family: 'Pretendard';
+                font-family: 'Pretendard SemiBold';
                 font-size: {self.s(28)}pt;
-                font-weight: 600;
                 border-radius: {self.s(20)}px;
                 border: none;
             }} 
@@ -1903,7 +1900,7 @@ class KioskMain(QMainWindow):
             
             l = QLabel(item["name"])
             l.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            l.setStyleSheet(f"font-family: 'Pretendard'; font-size: {fs}px; color: black; background: transparent;")
+            l.setStyleSheet(f"font-family: 'Pretendard SemiBold'; font-size: {fs}px; color: black; background: transparent;")
             
             v.addWidget(b)
             v.addWidget(l)
