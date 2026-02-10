@@ -308,7 +308,7 @@ class KioskMain(QMainWindow):
         
         if sub_text:
             lbl_sub = QLabel(sub_text, title_box)
-            lbl_sub.setStyleSheet(f"font-family: 'Pretendard Bold'; font-size: {self.s(28)}pt; color: #555; background: transparent;")
+            lbl_sub.setStyleSheet(f"font-family: 'Pretendard SemiBold'; font-size: {self.s(28)}pt; color: #555; background: transparent;")
             lbl_sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
             lbl_sub.setGeometry(0, self.s(130 + 60 + 13), int(self.new_w), self.s(40))
 
@@ -332,7 +332,7 @@ class KioskMain(QMainWindow):
         lbl_t.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         lbl_n = QLabel("")
-        lbl_n.setStyleSheet(f"font-family: 'TikTok Sans 16pt Bold'; font-size: {self.s(56)}pt; color: black; border: none; background: transparent;")
+        lbl_n.setStyleSheet(f"font-family: 'TikTok Sans 16pt SemiBold'; font-size: {self.s(56)}pt; color: black; border: none; background: transparent;")
         lbl_n.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         t_layout.addWidget(lbl_t)
