@@ -383,7 +383,7 @@ class KioskMain(QMainWindow):
         
         lbl = QLabel("뒤로\n가기", btn)
         lbl.setGeometry(self.s(61), self.s(42), self.s(60), self.s(60))
-        lbl.setStyleSheet(f"color: #C2C2C2; font-family: 'Pretendard SemiBold'; font-size: {self.fs(24)}pt; line-height: 120%; border: none; background: transparent;")
+        lbl.setStyleSheet(f"color: #C2C2C2; font-family: 'Pretendard SemiBold'; font-size: {self.fs(10)}pt; line-height: 120%; border: none; background: transparent;")
         
         return btn
 
