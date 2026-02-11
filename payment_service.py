@@ -1,5 +1,6 @@
 import requests
 import json
+import time  # 파일 상단에 추가
 from datetime import datetime
 
 class KSNETPayment:
@@ -49,29 +50,58 @@ class KSNETPayment:
 
             print(f"[Payment] Response Text (repr): {repr(result)}")
 
-            # 2) 200이면 일단 “요청 처리 성공”으로 보고,
-            #    취소/거절/실패 키워드가 있으면 실패로 본다 (테스트 우선 정책)
-            if response.status_code == 200:
-                fail_keywords = ["취소", "거절", "실패", "CANCEL", "FAIL", "DENY", "ERROR"]
-                if any(k in result for k in fail_keywords):
-                    return {
-                        "success": False,
-                        "message": "결제 실패/취소로 판단됨",
-                        "raw": result
-                    }
-
-                # 응답이 '()' 이거나 비어있어도: 지금은 승인 완료가 단말기에서 확인되므로 성공 처리
+                        # 2) 여기서부터 "진짜 승인/취소가 확정될 때만 성공/실패"로 처리
+            if response.status_code != 200:
                 return {
-                    "success": True,
-                    "message": "결제 승인 완료(HTTP 200)",
+                    "success": False,
+                    "message": f"HTTP 에러: {response.status_code}",
                     "raw": result
                 }
 
-            return {
-                "success": False,
-                "message": f"HTTP 에러: {response.status_code}",
-                "raw": result
-            }
+            fail_keywords = ["취소", "거절", "실패", "CANCEL", "FAIL", "DENY", "ERROR"]
+            success_keywords = ["승인", "정상", "SUCCESS", "OK", "APPROVE"]
+
+            # 실패 키워드면 즉시 실패
+            if any(k in result for k in fail_keywords):
+                return {"success": False, "message": "결제 실패/취소", "raw": result}
+
+            # 성공 키워드면 즉시 성공
+            if any(k in result for k in success_keywords):
+                return {"success": True, "message": "결제 승인 완료", "raw": result}
+
+            # 결과가 '()' 또는 빈 값이면: 아직 승인/취소가 확정되지 않은 상태로 보고 기다림
+            print("[Payment] 승인 결과 대기중...")
+
+            deadline = time.time() + timeout
+            poll_interval = 0.5
+
+            while time.time() < deadline:
+                time.sleep(poll_interval)
+
+                # ⚠️ 주의: 이 폴링이 "새 결제"를 다시 만드는 방식이면 위험할 수 있음(중복결제)
+                # 지금은 KSCAT 응답이 '()'로 와서 결과 확인용으로 시도하는 디버깅용 방식
+                r = requests.post(f"{self.base_url}/card", data=params, timeout=10)
+
+                raw = r.content or b""
+                t_utf8 = raw.decode("utf-8", errors="ignore").strip()
+                t_cp949 = raw.decode("cp949", errors="ignore").strip()
+                res = t_cp949 if t_cp949 else t_utf8
+                if not res:
+                    res = (r.text or "").strip()
+
+                print(f"[Payment] Poll Status: {r.status_code}, Text: {repr(res)}")
+
+                if r.status_code != 200:
+                    continue
+
+                if any(k in res for k in fail_keywords):
+                    return {"success": False, "message": "결제 실패/취소", "raw": res}
+
+                if any(k in res for k in success_keywords):
+                    return {"success": True, "message": "결제 승인 완료", "raw": res}
+
+            return {"success": False, "message": "결제 응답 타임아웃(승인 결과 미확정)", "raw": result}
+
         
         except requests.exceptions.ConnectionError:
             return {
