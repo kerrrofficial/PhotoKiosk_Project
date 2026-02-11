@@ -38,30 +38,40 @@ class KSNETPayment:
             )
             
             print(f"[Payment] Response Status: {response.status_code}")
-            print(f"[Payment] Response Body: {response.text}")
-            
+
+            # 1) 원문(bytes) 기반으로 최대한 복원
+            raw_bytes = response.content or b""
+            text_utf8 = raw_bytes.decode("utf-8", errors="ignore").strip()
+            text_cp949 = raw_bytes.decode("cp949", errors="ignore").strip()
+            result = text_cp949 if text_cp949 else text_utf8
+            if not result:
+                result = (response.text or "").strip()
+
+            print(f"[Payment] Response Text (repr): {repr(result)}")
+
+            # 2) 200이면 일단 “요청 처리 성공”으로 보고,
+            #    취소/거절/실패 키워드가 있으면 실패로 본다 (테스트 우선 정책)
             if response.status_code == 200:
-                # 응답 파싱 (형식에 따라 다름)
-                result = response.text
-                
-                # 성공 여부 확인 (실제 응답 형식 확인 필요)
-                if '승인' in result or '정상' in result or 'SUCCESS' in result:
+                fail_keywords = ["취소", "거절", "실패", "CANCEL", "FAIL", "DENY", "ERROR"]
+                if any(k in result for k in fail_keywords):
                     return {
-                        'success': True,
-                        'message': '결제 승인 완료',
-                        'raw': result
+                        "success": False,
+                        "message": "결제 실패/취소로 판단됨",
+                        "raw": result
                     }
-                else:
-                    return {
-                        'success': False,
-                        'message': '결제 실패',
-                        'raw': result
-                    }
-            else:
+
+                # 응답이 '()' 이거나 비어있어도: 지금은 승인 완료가 단말기에서 확인되므로 성공 처리
                 return {
-                    'success': False,
-                    'message': f'HTTP 에러: {response.status_code}'
+                    "success": True,
+                    "message": "결제 승인 완료(HTTP 200)",
+                    "raw": result
                 }
+
+            return {
+                "success": False,
+                "message": f"HTTP 에러: {response.status_code}",
+                "raw": result
+            }
         
         except requests.exceptions.ConnectionError:
             return {

@@ -1,7 +1,6 @@
-cd ~/Desktop/PhotoKiosk_Project
-cat > requirements.txt << 'EOF'
-PyQt6>=6.6.0
-opencv-python>=4.8.0
-Pillow>=10.0.0
-qrcode>=7.4.0
-EOF
+PyQt6
+opencv-python
+Pillow
+requests
+watchdog
+qrcode[pil]
