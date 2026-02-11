@@ -18,6 +18,8 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QH
 from PyQt6.QtCore import Qt, QTimer, QSize, QRect, pyqtSignal
 from PyQt6.QtGui import QPixmap, QIcon, QPainter, QColor, QPen, QPageSize, QKeySequence, QShortcut, QImage, QFont, QFontDatabase, QKeyEvent, QScreen, QPainterPath, QTransform
 from PyQt6.QtPrintSupport import QPrinter
+from PyQt6.QtCore import QThread
+from payment_service import KSNETPayment
 
 # [모듈 import]
 # 같은 폴더에 camera_thread.py, photo_utils.py, widgets.py, constants.py 가 있어야 합니다.
@@ -27,6 +29,19 @@ from widgets import ClickableLabel, BackArrowWidget, CircleButton, GradientButto
 from constants import LAYOUT_OPTIONS_MASTER
 from tether_service import capture_one_photo_blocking
 from tether_worker import TetherCaptureManyThread
+
+class PaymentApproveThread(QThread):
+    finished = pyqtSignal(dict)
+
+    def __init__(self, amount: int, parent=None):
+        super().__init__(parent)
+        self.amount = int(amount)
+
+    def run(self):
+        payment = KSNETPayment()  # 기본: http://localhost:27098
+        result = payment.approve(amount=self.amount, installment=0, timeout=120)
+        self.finished.emit(result)
+
 
 class KioskMain(QMainWindow):
 
@@ -1868,8 +1883,55 @@ class KioskMain(QMainWindow):
     def show_payment_popup(self, m):
         self.payment_popup_dialog = PaymentPopup(self, self.admin_settings.get("use_dark_mode"), self.s, m)
         self.payment_popup_dialog.show()
-        self.payment_timer = QTimer(self); self.payment_timer.setSingleShot(True); self.payment_timer.timeout.connect(lambda: self.on_payment_approved(m)); self.payment_timer.start(3000)
-        self.payment_popup_dialog.rejected.connect(self.payment_timer.stop)
+
+        # 팝업 닫으면 (X 누르거나 취소) -> 늦게 오는 승인 결과 무시
+        self._payment_cancelled = False
+        self.payment_popup_dialog.rejected.connect(lambda: setattr(self, "_payment_cancelled", True))
+
+        # 카드 결제만 실승인으로 처리 (나머지는 기존처럼 바로 성공 처리해도 됨)
+        if m != "card":
+            self.payment_success(m)
+            return
+
+        # 결제 금액 가져오기
+        amount = int(self.session_data.get("total_price", 0))
+        if amount <= 0:
+            QMessageBox.warning(self, "결제 오류", "결제 금액이 0원입니다. 가격 설정/선택을 확인하세요.")
+            self.payment_popup_dialog.reject()
+            return
+
+        # 중복 결제 방지 (버튼 연타 방지)
+        if getattr(self, "_payment_in_progress", False):
+            return
+        self._payment_in_progress = True
+
+        # KSCAT 승인 요청: UI 멈추지 않게 스레드에서 실행
+        self.payment_thread = PaymentApproveThread(amount=amount, parent=self)
+        self.payment_thread.finished.connect(self.on_card_payment_result)
+        self.payment_thread.start()
+
+    def on_card_payment_result(self, result: dict):
+        self._payment_in_progress = False
+
+        # 사용자가 팝업을 닫았으면 결과 무시
+        if getattr(self, "_payment_cancelled", False):
+            return
+
+        if result.get("success"):
+            # 성공: 팝업 닫고 촬영 페이지로 이동
+            if getattr(self, "payment_popup_dialog", None):
+                self.payment_popup_dialog.accept()
+                self.payment_popup_dialog = None
+
+            # 로그/기록용 (원하면 제거 가능)
+            self.session_data["payment_raw"] = result.get("raw", "")
+            self.payment_success("card")  # 여기서 show_page(3)으로 넘어감
+        else:
+            # 실패: 팝업은 열린 상태로 두고 경고만
+            msg = result.get("message", "결제 실패")
+            QMessageBox.warning(self, "결제 실패", msg)
+
+
 
     def on_payment_approved(self, m):
         if hasattr(self, 'payment_popup_dialog') and self.payment_popup_dialog: self.payment_popup_dialog.accept(); self.payment_popup_dialog = None
@@ -2013,9 +2075,12 @@ class KioskMain(QMainWindow):
         paper_type = self.session_data.get('paper_type', 'full')
         price_per_sheet = self.admin_settings.get(f'price_{paper_type}', 4000)
         total = price_per_sheet * (qty // 2)
-        
-        # 2. 천 단위 콤마 및 '원' 단위 표시
+
         self.lbl_price.setText(f"{total:,}원")
+
+        # ✅ 결제 요청에 쓸 금액 저장 (필수)
+        self.session_data["total_price"] = total
+
 
     def update_button_ui(self):
         """버튼 활성화/비활성화 업데이트"""
