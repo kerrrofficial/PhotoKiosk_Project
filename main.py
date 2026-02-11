@@ -25,10 +25,24 @@ from camera_thread import VideoThread
 from photo_utils import merge_4cut_vertical, apply_filter, add_qr_to_image, FRAME_LAYOUTS
 from widgets import ClickableLabel, BackArrowWidget, CircleButton, GradientButton, QRCheckWidget, GlobalTimerWidget, PaymentPopup
 from constants import LAYOUT_OPTIONS_MASTER
+from tether_service import capture_one_photo_blocking
+from tether_worker import TetherCaptureManyThread
 
 class KioskMain(QMainWindow):
+
+    def get_admin_shoot_count(self) -> int:
+        n = int(self.admin_settings.get("total_shoot_count", 8))
+        return max(1, min(12, n))
+
+    
+    def set_tether_status(self, msg: str):
+        self.tether_status_text = msg
+        print("[tether][ui]", msg)
+
     
     def __init__(self):
+        from constants import DEFAULT_SHOOT_COUNT, MAX_SHOOT_COUNT
+
         super().__init__()
 
         # 🔥 폰트 로딩 (가장 먼저!)
@@ -66,10 +80,6 @@ class KioskMain(QMainWindow):
             'camera_index': 0,      # check_camera.py로 확인한 인덱스
             'camera_width': 1920,   # 해상도
             'camera_height': 1080,
-            # 🔥 프린터 설정
-            'printer_name_full': 'DS-RX1',      # 풀컷 (4x6)
-            'printer_name_half': 'DS-RX1_Cut',  # 하프컷 (2x3)
-    
             
         }
 
@@ -1807,106 +1817,15 @@ class KioskMain(QMainWindow):
         self.show_page(5)
 
     def start_printing(self):
-        """프린터로 출력 (풀컷/하프컷 자동 선택)"""
-        if not hasattr(self, 'final_print_path'): 
-            self.final_print_path = self.final_image_path
-        
-        # QR 코드 추가
-        if self.session_data.get('use_qr', True): 
-            add_qr_to_image(self.final_print_path)
-        
+        if not hasattr(self, 'final_print_path'): self.final_print_path = self.final_image_path
+        if self.session_data.get('use_qr', True): add_qr_to_image(self.final_print_path)
         self.last_printed_file = self.final_print_path
-        
-        # 🔥 용지 타입에 따라 프린터 선택
-        paper_type = self.session_data.get('paper_type', 'full')
-        
-        if paper_type == 'half':
-            printer_name = self.admin_settings.get('printer_name_half', 'DS-RX1_Cut')
-            print(f"[Print] 하프컷 프린터: {printer_name}")
-        else:
-            printer_name = self.admin_settings.get('printer_name_full', 'DS-RX1')
-            print(f"[Print] 풀컷 프린터: {printer_name}")
-        
-        print_qty = self.session_data.get('print_qty', 1)
-        
-        # PyQt6 프린터 사용
-        from PyQt6.QtPrintSupport import QPrinter
-        from PyQt6.QtGui import QPainter, QImage, QPageSize, QPageLayout
-        from PyQt6.QtCore import QSizeF, QMarginsF
-        
-        printer = QPrinter(QPrinter.PrinterMode.HighResolution)
-        
-        if printer_name:
-            printer.setPrinterName(printer_name)
-        
-        # 🔥 용지 크기 설정
-        if paper_type == 'half':
-            # 2x3 인치 (50.8 x 76.2 mm)
-            printer.setPageSize(QPageSize(QSizeF(50.8, 76.2), QPageSize.Unit.Millimeter))
-            print("[Print] 용지: 2x3 인치 (하프컷)")
-        else:
-            # 4x6 인치 (101.6 x 152.4 mm)
-            printer.setPageSize(QPageSize(QSizeF(101.6, 152.4), QPageSize.Unit.Millimeter))
-            print("[Print] 용지: 4x6 인치 (풀컷)")
-        
-        # 세로 방향
-        printer.setPageOrientation(QPageLayout.Orientation.Portrait)
-        
-        # 여백 없음
-        printer.setPageMargins(QMarginsF(0, 0, 0, 0), QPageLayout.Unit.Millimeter)
-        
-        # 인쇄 시작
-        for i in range(print_qty):
-            print(f"[Print] {i+1}/{print_qty} 인쇄 중...")
-            
-            painter = QPainter(printer)
-            
-            if not painter.isActive():
-                print(f"[Print] 프린터 시작 실패")
-                break
-            
-            # 이미지 로드
-            img = QImage(self.final_print_path)
-            
-            if img.isNull():
-                print("[Print] 이미지 로드 실패")
-                painter.end()
-                break
-            
-            # 페이지 크기 가져오기
-            page_rect = printer.pageRect(QPrinter.Unit.DevicePixel)
-            
-            # 이미지 크기 조정 (페이지에 꽉 채우기)
-            scaled_img = img.scaled(
-                int(page_rect.width()),
-                int(page_rect.height()),
-                Qt.AspectRatioMode.KeepAspectRatioByExpanding,
-                Qt.TransformationMode.SmoothTransformation
-            )
-            
-            # 중앙 정렬 (넘치는 부분 크롭)
-            x = (scaled_img.width() - page_rect.width()) / 2
-            y = (scaled_img.height() - page_rect.height()) / 2
-            
-            cropped_img = scaled_img.copy(
-                int(x), int(y),
-                int(page_rect.width()),
-                int(page_rect.height())
-            )
-            
-            # 인쇄
-            painter.drawImage(0, 0, cropped_img)
-            painter.end()
-            
-            print(f"[Print] {i+1}번 인쇄 완료")
-            
-            # 다음 장 (마지막 장이 아니면)
-            if i < print_qty - 1:
-                printer.newPage()
-        
-        print(f"[Print] 총 {print_qty}장 인쇄 완료!")
-        
-        # 완료 페이지로 이동
+        qty = self.session_data.get('print_qty', 1); current_os = sys.platform
+        try: 
+            for _ in range(qty): 
+                if current_os == 'darwin': subprocess.run(['lpr', '-P', self.admin_settings.get('printer_name', 'Canon_E560_series'), '-o', 'fit-to-page', self.final_print_path])
+                elif current_os == 'win32': os.startfile(self.final_print_path, "print")
+        except: pass
         self.show_page(6)
 
     def load_payment_page_logic(self):
@@ -2266,7 +2185,25 @@ class KioskMain(QMainWindow):
         self.stack.setCurrentIndex(idx)
         if idx==1: self.load_frame_options() 
         elif idx==2: self.load_payment_page()
-        elif idx==3: self.cam_thread = VideoThread(); self.cam_thread.change_pixmap_signal.connect(self.update_image); self.cam_thread.start(); QTimer.singleShot(1000, self.start_shooting)
+        elif idx==3: 
+            self.cam_thread = VideoThread(); 
+            self.cam_thread.change_pixmap_signal.connect(self.update_image); 
+            self.cam_thread.start(); 
+            # 프레임에서 필요한 컷 수(1~12)
+            need = int(self.session_data.get("target_count", 4))
+            need = max(1, min(12, need))
+
+            shoot_n = self.get_admin_shoot_count()
+            timeout = 20 + shoot_n * 5  # 초보용: 수량이 늘수록 자동으로 더 기다림(예: 1장=25초, 12장=80초)
+
+            self.set_tether_status(f"테더 촬영 대기중… ({shoot_n}장 수신)")
+            self.tether_thread = TetherCaptureManyThread(expected_count=shoot_n, timeout_sec=timeout, parent=self)
+            self.tether_thread.success.connect(self.on_tether_success_many)
+            self.tether_thread.failed.connect(self.on_tether_failed)
+            self.tether_thread.start()
+
+
+
         elif idx==4:
             print("[DEBUG] 사진 선택 페이지 진입")
             print(f"[DEBUG] session_data: {self.session_data}")
@@ -2350,6 +2287,52 @@ class KioskMain(QMainWindow):
             elif idx == 5 and hasattr(self, 'lbl_timer_filter'):  # 🔥 추가
                 self.lbl_timer_filter.setText(str(t))
             self.timer.start(1000)
+
+
+    def on_tether_success(self, photo_path: str):
+        print("[tether] captured:", photo_path)
+
+        # 예약된 촬영 시작 타이머 취소
+        if hasattr(self, "shoot_timer") and self.shoot_timer:
+            self.shoot_timer.stop()
+            self.shoot_timer = None
+
+        # 카메라 스레드도 종료(프리뷰만 쓰는 구조로 갈 때)
+        if hasattr(self, "cam_thread") and self.cam_thread:
+            self.cam_thread.stop()
+            self.cam_thread = None
+
+        self.saved_photos = [photo_path]
+        self.show_page(4)
+
+    def on_tether_failed(self, msg: str):
+        print("[tether] failed:", msg)
+
+        # 테더 실패했을 때만 웹캠 촬영 시작 (fallback)
+        self.shoot_timer = QTimer(self)
+        self.shoot_timer.setSingleShot(True)
+        self.shoot_timer.timeout.connect(self.start_shooting)
+        self.shoot_timer.start(1000)
+
+    def on_tether_success_many(self, photo_paths):
+        print("[tether] captured many:", len(photo_paths))
+
+        # 프리뷰/촬영 예약 취소류
+        if hasattr(self, "shoot_timer") and self.shoot_timer:
+            self.shoot_timer.stop()
+            self.shoot_timer = None
+
+        if hasattr(self, "cam_thread") and self.cam_thread:
+            self.cam_thread.stop()
+            self.cam_thread = None
+
+        # ✅ 핵심: 선택 페이지가 쓰는 리스트를 테더 결과로 갱신
+        self.captured_files = list(photo_paths)
+        self.saved_photos = list(photo_paths)  # (원하면 유지)
+
+        self.show_page(4)
+
+
     
     # -----------------------------------------------------------
     # [Shooting Logic] - 구현 완료된 촬영 로직
@@ -2733,3 +2716,6 @@ def on_source_click(self, i):
     print(f"[DEBUG] 업데이트 후: {self.selected_indices}")  # 🔥 디버그 출력
     
     self.load_select_page()
+
+
+

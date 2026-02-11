@@ -12,3 +12,6 @@ LAYOUT_OPTIONS_MASTER = {
         "4cut": "4컷"
     }
 }
+
+DEFAULT_SHOOT_COUNT = 8  # 어드민에서 바꿀 값(1~12)
+MAX_SHOOT_COUNT = 12
