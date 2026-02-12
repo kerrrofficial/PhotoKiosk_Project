@@ -77,30 +77,37 @@ class EOSRemoteShutter:
             print(f"[EOS] 창 활성화 실패: {e}")
             return False
     
-    def trigger(self, wait_after: float = 0.5) -> bool:
+    def trigger(self, wait_after: float = 0.5, auto_activate: bool = True) -> bool:
         """
         촬영 트리거 (Space 키 전송)
         
         Args:
             wait_after: 촬영 후 대기 시간 (초)
+            auto_activate: 자동으로 창 활성화 여부
             
         Returns:
             성공 여부
         """
-        # 1. EOS Utility 창 찾기
-        hwnd = self.find_eos_window()
-        if not hwnd:
-            return False
+        # 1. EOS Utility 창 찾기 (auto_activate=True일 때만)
+        if auto_activate:
+            hwnd = self.find_eos_window()
+            
+            if hwnd is None:
+                print("[EOS] ❌ EOS Utility 창을 찾을 수 없습니다.")
+                print("[EOS] 확인사항:")
+                print("  1. EOS Utility가 실행되어 있나요?")
+                print("  2. '원격 라이브 뷰 창'이 열려있나요?")
+                return False
+            
+            # 2. 창 활성화
+            print(f"[EOS] ✅ 창 찾음!")
+            self.activate_window(hwnd)
         
-        # 2. 창 활성화
-        if not self.activate_window(hwnd):
-            return False
-        
-        # 3. Space 키 전송 (촬영 단축키)
+        # 3. Space 키 전송
         print("[EOS] 📸 셔터 트리거!")
         pyautogui.press('space')
         
-        # 4. 짧은 대기 (카메라 응답 시간)
+        # 4. 대기
         time.sleep(wait_after)
         
         return True
