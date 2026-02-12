@@ -92,7 +92,7 @@ class KioskMain(QMainWindow):
             'print_count_min': 2, 'print_count_max': 12,
             'use_filter_page': True, 'save_raw_files': False,
             # 🔥 카메라 설정 추가
-            'camera_index': 0,      # check_camera.py로 확인한 인덱스
+            'camera_index': 1,      # check_camera.py로 확인한 인덱스
             'camera_width': 1920,   # 해상도
             'camera_height': 1080,
             'camera_source': 'capture'  # 'capture' 또는 'tether'
@@ -2256,8 +2256,11 @@ class KioskMain(QMainWindow):
         if idx==1: self.load_frame_options() 
         elif idx==2: self.load_payment_page()
         elif idx==3: 
-            self.cam_thread = VideoThread(); 
+            camera_index = self.admin_settings.get('camera_index', 0)
+            self.cam_thread = VideoThread(camera_index=camera_index)
             self.cam_thread.change_pixmap_signal.connect(self.update_image); 
+            self.cam_thread.error_signal.connect(self.on_camera_error)
+
             self.cam_thread.start(); 
             # 프레임에서 필요한 컷 수(1~12)
             need = int(self.session_data.get("target_count", 4))
