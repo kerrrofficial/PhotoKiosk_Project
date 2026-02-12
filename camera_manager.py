@@ -519,3 +519,150 @@ if __name__ == "__main__":
         test_full_workflow()
     else:
         print("❌ 잘못된 선택")
+
+# 파일 끝에 추가
+
+def run_standalone_mode():
+    """
+    독립 실행 모드: 
+    - 촬영 완료 시 파일 목록을 JSON으로 저장
+    - main.py가 이 JSON을 읽어서 처리
+    """
+    import json
+    from PyQt6.QtWidgets import QApplication
+    import sys
+    
+    print("\n🎥 독립 촬영 모드 시작")
+    print("=" * 60)
+    
+    app = QApplication(sys.argv)
+    
+    # 카메라 매니저 생성
+    manager = CameraManager(
+        preview_camera_index=1,
+        preview_width=640,
+        preview_height=480,
+        capture_timeout=15
+    )
+    
+    # 프리뷰 + 촬영 통합 윈도우
+    window = QMainWindow()
+    window.setWindowTitle("네컷사진 촬영")
+    window.resize(1920, 1080)
+    
+    central = QWidget()
+    layout = QVBoxLayout(central)
+    
+    # 프리뷰 라벨
+    label = QLabel()
+    label.setScaledContents(True)
+    label.setMinimumSize(1280, 720)
+    layout.addWidget(label)
+    
+    # 촬영 버튼
+    btn = QPushButton("📸 촬영하기 (8장)")
+    btn.setMinimumHeight(80)
+    layout.addWidget(btn)
+    
+    # 진행 상태
+    status_label = QLabel("0/8 촬영 완료")
+    status_label.setStyleSheet("font-size: 24px;")
+    layout.addWidget(status_label)
+    
+    window.setCentralWidget(central)
+    
+    # 프레임 업데이트
+    def update_preview(qimage):
+        from PyQt6.QtGui import QPixmap
+        pixmap = QPixmap.fromImage(qimage)
+        label.setPixmap(pixmap)
+    
+    manager.preview_frame_ready.connect(update_preview)
+    
+    # 세션 시작
+    manager.start_session()
+    manager.start_preview()
+    
+    # 촬영 카운터
+    shot_count = 0
+    total_shots = 8
+    
+    # 촬영 버튼 클릭
+    def on_capture():
+        nonlocal shot_count
+        
+        btn.setEnabled(False)
+        btn.setText("촬영 중...")
+        
+        filepath = manager.capture_photo()
+        
+        if filepath:
+            shot_count += 1
+            status_label.setText(f"{shot_count}/{total_shots} 촬영 완료")
+            print(f"[촬영] {shot_count}/{total_shots} - {filepath}")
+            
+            if shot_count >= total_shots:
+                # 촬영 완료
+                save_result_and_exit()
+            else:
+                # 다음 촬영 준비
+                QTimer.singleShot(2000, lambda: btn.setEnabled(True))
+                QTimer.singleShot(2000, lambda: btn.setText(f"📸 촬영하기 ({shot_count}/{total_shots})"))
+        else:
+            btn.setEnabled(True)
+            btn.setText("❌ 재촬영")
+    
+    btn.clicked.connect(on_capture)
+    
+    # 결과 저장 및 종료
+    def save_result_and_exit():
+        btn.setText("✅ 촬영 완료!")
+        
+        # 촬영된 파일 목록을 JSON으로 저장
+        result = {
+            'success': True,
+            'files': manager.get_captured_files(),
+            'session_dir': str(manager.session_dir)
+        }
+        
+        result_path = 'camera_result.json'
+        with open(result_path, 'w', encoding='utf-8') as f:
+            json.dump(result, f, ensure_ascii=False, indent=2)
+        
+        print(f"\n✅ 결과 저장: {result_path}")
+        print(f"촬영된 파일: {len(result['files'])}개")
+        
+        # 2초 후 종료
+        QTimer.singleShot(2000, app.quit)
+    
+    window.show()
+    sys.exit(app.exec())
+
+
+if __name__ == "__main__":
+    import sys
+    
+    # 독립 실행 모드 체크
+    if len(sys.argv) > 1 and sys.argv[1] == '--standalone':
+        run_standalone_mode()
+    else:
+        # 기존 테스트 모드
+        print("\n🎯 카메라 매니저 테스트")
+        print("\n옵션:")
+        print("  0) 창 활성화 테스트")
+        print("  1) 프리뷰만 테스트")
+        print("  2) 촬영만 테스트")
+        print("  3) 프리뷰 + 촬영 통합 테스트 (권장)")
+        
+        choice = input("\n선택 (0-3): ").strip()
+        
+        if choice == "0":
+            test_window_activation()
+        elif choice == "1":
+            test_preview_only()
+        elif choice == "2":
+            test_capture_only()
+        elif choice == "3":
+            test_full_workflow()
+        else:
+            print("❌ 잘못된 선택")

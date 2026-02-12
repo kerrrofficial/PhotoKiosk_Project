@@ -2255,27 +2255,27 @@ class KioskMain(QMainWindow):
         self.stack.setCurrentIndex(idx)
         if idx==1: self.load_frame_options() 
         elif idx==2: self.load_payment_page()
-        elif idx==3: 
-            camera_index = self.admin_settings.get('camera_index', 0)
-            self.cam_thread = VideoThread(camera_index=camera_index)
-            self.cam_thread.change_pixmap_signal.connect(self.update_image); 
-            self.cam_thread.error_signal.connect(self.on_camera_error)
-
-            self.cam_thread.start(); 
-            # 프레임에서 필요한 컷 수(1~12)
-            need = int(self.session_data.get("target_count", 4))
-            need = max(1, min(12, need))
-
-            shoot_n = self.get_admin_shoot_count()
-            timeout = 20 + shoot_n * 5  # 초보용: 수량이 늘수록 자동으로 더 기다림(예: 1장=25초, 12장=80초)
-
-            self.set_tether_status(f"테더 촬영 대기중… ({shoot_n}장 수신)")
-            self.tether_thread = TetherCaptureManyThread(expected_count=shoot_n, timeout_sec=timeout, parent=self)
-            self.tether_thread.success.connect(self.on_tether_success_many)
-            self.tether_thread.failed.connect(self.on_tether_failed)
-            self.tether_thread.start()
-
-
+        elif idx==3:
+            # 🔥 기존 테더링 방식 (주석 처리)
+            # camera_index = self.admin_settings.get('camera_index', 0)
+            # self.cam_thread = VideoThread(camera_index=camera_index)
+            # self.cam_thread.change_pixmap_signal.connect(self.update_image)
+            # self.cam_thread.start()
+            # 
+            # shoot_n = self.get_admin_shoot_count()
+            # timeout = 20 + shoot_n * 5
+            # 
+            # self.tether_thread = TetherCaptureManyThread(
+            #     expected_count=shoot_n, 
+            #     timeout_sec=timeout, 
+            #     parent=self
+            # )
+            # self.tether_thread.success.connect(self.on_tether_success_many)
+            # self.tether_thread.failed.connect(self.on_tether_failed)
+            # self.tether_thread.start()
+            
+            # 🔥 새로운 방식: camera_manager 독립 실행
+            self.run_external_camera_manager()
 
         elif idx==4:
             print("[DEBUG] 사진 선택 페이지 진입")
@@ -2404,6 +2404,107 @@ class KioskMain(QMainWindow):
         self.saved_photos = list(photo_paths)  # (원하면 유지)
 
         self.show_page(4)
+
+    def run_external_camera_manager(self):
+        """
+        외부 camera_manager.py 실행 및 결과 대기
+        """
+        import subprocess
+        import json
+        import time
+        
+        # 1. 결과 파일 삭제 (이전 세션)
+        result_path = 'camera_result.json'
+        if os.path.exists(result_path):
+            os.remove(result_path)
+        
+        # 2. camera_manager.py 실행 (독립 프로세스)
+        python_exe = sys.executable
+        script_path = os.path.join(self.base_path, 'camera_manager.py')
+        
+        print(f"[외부 촬영] {script_path} 실행 중...")
+        
+        try:
+            # 비블로킹 실행
+            process = subprocess.Popen(
+                [python_exe, script_path, '--standalone'],
+                cwd=self.base_path
+            )
+            
+            # 촬영 화면 숨기기 (선택사항)
+            self.hide()
+            
+            # 결과 대기 (폴링 방식)
+            self.wait_for_camera_result(process, result_path)
+            
+        except Exception as e:
+            print(f"[외부 촬영] 오류: {e}")
+            QMessageBox.critical(self, "촬영 오류", f"촬영 프로그램 실행 실패:\n{e}")
+            self.show()
+            self.show_page(0)
+
+    def wait_for_camera_result(self, process, result_path):
+        """
+        camera_manager 종료 및 결과 파일 대기
+        """
+        import json
+        
+        # 타이머로 주기적 체크
+        check_timer = QTimer(self)
+        check_count = 0
+        max_checks = 300  # 5분 (1초 * 300)
+        
+        def check_result():
+            nonlocal check_count
+            check_count += 1
+            
+            # 1. 프로세스 종료 확인
+            if process.poll() is not None:
+                # 프로세스 종료됨
+                check_timer.stop()
+                
+                # 2. 결과 파일 로드
+                if os.path.exists(result_path):
+                    try:
+                        with open(result_path, 'r', encoding='utf-8') as f:
+                            result = json.load(f)
+                        
+                        if result.get('success'):
+                            # 성공: 파일 목록 로드
+                            self.captured_files = result['files']
+                            print(f"[외부 촬영] 성공: {len(self.captured_files)}개 파일")
+                            
+                            # 키오스크 화면 복귀
+                            self.show()
+                            
+                            # 사진 선택 페이지로 이동
+                            self.show_page(4)
+                        else:
+                            # 실패
+                            self.show()
+                            QMessageBox.warning(self, "촬영 실패", "촬영이 완료되지 않았습니다.")
+                            self.show_page(0)
+                    
+                    except Exception as e:
+                        print(f"[외부 촬영] 결과 로드 오류: {e}")
+                        self.show()
+                        self.show_page(0)
+                else:
+                    # 결과 파일 없음
+                    print("[외부 촬영] 결과 파일 없음")
+                    self.show()
+                    self.show_page(0)
+            
+            # 3. 타임아웃 체크
+            elif check_count >= max_checks:
+                check_timer.stop()
+                process.terminate()
+                self.show()
+                QMessageBox.warning(self, "촬영 시간 초과", "촬영 시간이 초과되었습니다.")
+                self.show_page(0)
+        
+        check_timer.timeout.connect(check_result)
+        check_timer.start(1000)  # 1초마다 체크
 
 
     
