@@ -61,7 +61,7 @@ class KioskMain(QMainWindow):
         super().__init__()
 
         # 🔥 폰트 로딩 (가장 먼저!)
-        self.base_path = os.getcwd()  # 먼저 base_path 설정
+        self.base_path = os.path.dirname(os.path.abspath(__file__))
         self.load_custom_fonts()       # 폰트 로드
         
         # 0. 디자인 기준 해상도 (16:9)
@@ -95,7 +95,7 @@ class KioskMain(QMainWindow):
             'camera_index': 0,      # check_camera.py로 확인한 인덱스
             'camera_width': 1920,   # 해상도
             'camera_height': 1080,
-            
+            'camera_source': 'capture'  # 'capture' 또는 'tether'
         }
 
         self.event_config = self.load_event_config() 
@@ -178,7 +178,7 @@ class KioskMain(QMainWindow):
         
         print(f"\n총 {loaded_count}개 폰트 로드 완료\n")
 
-            # 🔥 디버깅: 시스템에서 사용 가능한 모든 폰트 출력
+        # 🔥 디버깅: 시스템에서 사용 가능한 모든 폰트 출력
         print("=" * 50)
         print("사용 가능한 폰트 패밀리:")
         all_families = QFontDatabase.families()
@@ -191,12 +191,17 @@ class KioskMain(QMainWindow):
     # [Config & Setup]
     # -----------------------------------------------------------
     def load_event_config(self):
+        path = os.path.join(self.base_path, "event_config.json")
+        if not os.path.exists(path):
+            return {"event_name": "Default", "papers": {"full": {"v2": ["*"]}}}
+
         try:
-            path = os.path.join(self.base_path, "event_config.json")
-            if os.path.exists(path):
-                with open(path, 'r', encoding='utf-8') as f: return json.load(f)
-        except: pass
-        return { "event_name": "Default", "papers": { "full": {"v2": ["*"]} } }
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"[event_config] 로드 실패: {e} / path={path}")
+            return {"event_name": "Default", "papers": {"full": {"v2": ["*"]}}}
+
 
     def create_asset_folders(self):
         for p, ls in LAYOUT_OPTIONS_MASTER.items():

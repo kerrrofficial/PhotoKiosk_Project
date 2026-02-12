@@ -5,6 +5,7 @@ EOS Utility 원격 촬영 자동 트리거 (개선 버전)
 
 import time
 import pyautogui
+pyautogui.FAILSAFE = False  # 키오스크용 필수
 import subprocess
 from typing import Optional
 
@@ -26,62 +27,52 @@ class EOSRemoteShutter:
     
     def activate_eos_window(self) -> bool:
         """
-        EOS Utility 창을 자동으로 활성화
-        Windows의 PowerShell 명령어 사용
-        
-        Returns:
-            성공 여부
+        EOS Utility 창 활성화 (재시도 포함)
         """
-        for title in self.WINDOW_TITLES:
-            try:
-                # PowerShell 명령어로 창 활성화
-                # -WindowStyle Hidden: PowerShell 창 숨기기
-                cmd = f'''
-                $wshell = New-Object -ComObject wscript.shell;
-                $wshell.AppActivate('{title}')
-                '''
-                
-                result = subprocess.run(
-                    ["powershell", "-WindowStyle", "Hidden", "-Command", cmd],
-                    capture_output=True,
-                    timeout=2
-                )
-                
-                if result.returncode == 0:
-                    print(f"[EOS] ✅ 창 활성화 성공: {title}")
-                    self.last_activated_title = title
-                    time.sleep(0.3)  # 활성화 대기
-                    return True
-                    
-            except Exception as e:
-                continue
-        
-        print("[EOS] ⚠️ 자동 활성화 실패. 수동으로 원격 라이브 뷰 창을 클릭하세요.")
+        for attempt in range(3):  # 3회 재시도
+            for title in self.WINDOW_TITLES:
+                try:
+                    cmd = f'''
+                    $wshell = New-Object -ComObject wscript.shell;
+                    $wshell.AppActivate('{title}')
+                    '''
+                    result = subprocess.run(
+                        ["powershell", "-WindowStyle", "Hidden", "-Command", cmd],
+                        capture_output=True,
+                        timeout=2
+                    )
+
+                    if result.returncode == 0:
+                        time.sleep(0.3)
+                        self.last_activated_title = title
+                        print(f"[EOS] 활성화 성공: {title}")
+                        return True
+                except:
+                    continue
+
+            print(f"[EOS] 활성화 실패 (시도 {attempt+1}/3)")
+            time.sleep(0.5)
+
+        print("[EOS] ❌ EOS 창 활성화 완전 실패")
         return False
+
     
     def trigger(self, wait_after: float = 2.0, auto_activate: bool = True) -> bool:
         """
-        촬영 트리거 (Space 키 전송)
-        
-        Args:
-            wait_after: 촬영 후 대기 시간 (초)
-            auto_activate: 자동으로 창 활성화 여부
-            
-        Returns:
-            성공 여부
+        촬영 트리거
         """
-        # 1. 창 자동 활성화 시도
         if auto_activate:
-            self.activate_eos_window()
-        
-        # 2. Space 키 전송 (촬영 단축키)
-        print("[EOS] 📸 셔터 트리거!")
-        pyautogui.press('space')
-        
-        # 3. 촬영 완료 대기
-        time.sleep(wait_after)
-        
-        return True
+            if not self.activate_eos_window():
+                return False
+
+        try:
+            pyautogui.press('space')
+            time.sleep(wait_after)
+            return True
+        except Exception as e:
+            print(f"[EOS] 셔터 오류: {e}")
+            return False
+
     
     def check_connection(self) -> bool:
         """
