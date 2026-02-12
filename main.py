@@ -2405,36 +2405,30 @@ class KioskMain(QMainWindow):
 
         self.show_page(4)
 
+    # 🔥 여기에 추가!
     def run_external_camera_manager(self):
-        """
-        외부 camera_manager.py 실행 및 결과 대기
-        """
+        """외부 camera_manager.py 실행 및 결과 대기"""
         import subprocess
         import json
-        import time
         
         # 1. 결과 파일 삭제 (이전 세션)
         result_path = 'camera_result.json'
         if os.path.exists(result_path):
             os.remove(result_path)
         
-        # 2. camera_manager.py 실행 (독립 프로세스)
+        # 2. camera_manager.py 실행
         python_exe = sys.executable
         script_path = os.path.join(self.base_path, 'camera_manager.py')
         
         print(f"[외부 촬영] {script_path} 실행 중...")
         
         try:
-            # 비블로킹 실행
             process = subprocess.Popen(
                 [python_exe, script_path, '--standalone'],
                 cwd=self.base_path
             )
             
-            # 촬영 화면 숨기기 (선택사항)
             self.hide()
-            
-            # 결과 대기 (폴링 방식)
             self.wait_for_camera_result(process, result_path)
             
         except Exception as e:
@@ -2443,44 +2437,33 @@ class KioskMain(QMainWindow):
             self.show()
             self.show_page(0)
 
+
     def wait_for_camera_result(self, process, result_path):
-        """
-        camera_manager 종료 및 결과 파일 대기
-        """
+        """camera_manager 종료 및 결과 파일 대기"""
         import json
         
-        # 타이머로 주기적 체크
         check_timer = QTimer(self)
         check_count = 0
-        max_checks = 300  # 5분 (1초 * 300)
+        max_checks = 300
         
         def check_result():
             nonlocal check_count
             check_count += 1
             
-            # 1. 프로세스 종료 확인
             if process.poll() is not None:
-                # 프로세스 종료됨
                 check_timer.stop()
                 
-                # 2. 결과 파일 로드
                 if os.path.exists(result_path):
                     try:
                         with open(result_path, 'r', encoding='utf-8') as f:
                             result = json.load(f)
                         
                         if result.get('success'):
-                            # 성공: 파일 목록 로드
                             self.captured_files = result['files']
-                            print(f"[외부 촬영] 성공: {len(self.captured_files)}개 파일")
-                            
-                            # 키오스크 화면 복귀
+                            print(f"[외부 촬영] 성공: {len(self.captured_files)}개")
                             self.show()
-                            
-                            # 사진 선택 페이지로 이동
                             self.show_page(4)
                         else:
-                            # 실패
                             self.show()
                             QMessageBox.warning(self, "촬영 실패", "촬영이 완료되지 않았습니다.")
                             self.show_page(0)
@@ -2490,12 +2473,10 @@ class KioskMain(QMainWindow):
                         self.show()
                         self.show_page(0)
                 else:
-                    # 결과 파일 없음
                     print("[외부 촬영] 결과 파일 없음")
                     self.show()
                     self.show_page(0)
             
-            # 3. 타임아웃 체크
             elif check_count >= max_checks:
                 check_timer.stop()
                 process.terminate()
@@ -2504,7 +2485,7 @@ class KioskMain(QMainWindow):
                 self.show_page(0)
         
         check_timer.timeout.connect(check_result)
-        check_timer.start(1000)  # 1초마다 체크
+        check_timer.start(1000)
 
 
     
