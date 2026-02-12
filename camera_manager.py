@@ -43,8 +43,8 @@ class CameraManager(QObject):
     def __init__(
         self,
         preview_camera_index=1,
-        preview_width=640,
-        preview_height=480,
+        preview_width=1920,
+        preview_height=1080,
         capture_timeout=10
     ):
         super().__init__()
@@ -295,8 +295,8 @@ def test_preview_only():
     # 카메라 매니저
     manager = CameraManager(
         preview_camera_index=1,  # 캡처보드
-        preview_width=640,
-        preview_height=480
+        preview_width=1920,
+        preview_height=1080
     )
     
     # 프레임 업데이트
@@ -388,7 +388,7 @@ def test_full_workflow():
     # 프리뷰 라벨
     label = QLabel()
     label.setScaledContents(True)
-    label.setMinimumSize(640, 480)
+    label.setMinimumSize(1920, 1080)
     layout.addWidget(label)
     
     # 촬영 버튼
@@ -401,8 +401,8 @@ def test_full_workflow():
     # 카메라 매니저
     manager = CameraManager(
         preview_camera_index=1,
-        preview_width=640,
-        preview_height=480,
+        preview_width=1920,
+        preview_height=1080,
         capture_timeout=10
     )
     
