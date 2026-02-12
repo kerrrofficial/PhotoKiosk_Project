@@ -614,10 +614,18 @@ def run_standalone_mode():
         for f in result['files']:
             print(f"  - {f}")
         
-        status_label.setText("완료! 2초 후 종료됩니다.")
+        status_label.setText("완료! 1초 후 종료됩니다.")
         
-        # 2초 후 종료
-        QTimer.singleShot(2000, app.quit)
+        # 🔥 1초 후 강제 종료
+        def force_exit():
+            print("[camera_manager] 프로그램 종료 중...")
+            manager.stop_preview()
+            manager.cleanup()
+            app.quit()
+            import os
+            os._exit(0)  # 강제 종료
+        
+        QTimer.singleShot(1000, force_exit)
     
     window.show()
     sys.exit(app.exec())
