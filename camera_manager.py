@@ -42,9 +42,9 @@ class CameraManager(QObject):
     
     def __init__(
         self,
-        preview_camera_index=0,
-        preview_width=1280,
-        preview_height=720,
+        preview_camera_index=1,
+        preview_width=640,
+        preview_height=480,
         capture_timeout=10
     ):
         super().__init__()
@@ -294,9 +294,9 @@ def test_preview_only():
     
     # 카메라 매니저
     manager = CameraManager(
-        preview_camera_index=0,  # 캡처보드
-        preview_width=1280,
-        preview_height=720
+        preview_camera_index=1,  # 캡처보드
+        preview_width=640,
+        preview_height=480
     )
     
     # 프레임 업데이트
@@ -328,7 +328,7 @@ def test_capture_only():
     print("촬영 테스트 (프리뷰 없음)")
     print("="*60)
     
-    manager = CameraManager(preview_camera_index=0, capture_timeout=15)
+    manager = CameraManager(preview_camera_index=1, capture_timeout=15)
     
     print("\n⚠️ 준비사항:")
     print("  1. EOS Utility 실행 중")
@@ -388,7 +388,7 @@ def test_full_workflow():
     # 프리뷰 라벨
     label = QLabel()
     label.setScaledContents(True)
-    label.setMinimumSize(1280, 720)
+    label.setMinimumSize(640, 480)
     layout.addWidget(label)
     
     # 촬영 버튼
@@ -400,9 +400,9 @@ def test_full_workflow():
     
     # 카메라 매니저
     manager = CameraManager(
-        preview_camera_index=0,
-        preview_width=1280,
-        preview_height=720,
+        preview_camera_index=1,
+        preview_width=640,
+        preview_height=480,
         capture_timeout=10
     )
     

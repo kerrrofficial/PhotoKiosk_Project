@@ -25,8 +25,8 @@ class VideoThread(QThread):
             # AVFoundation 사용 (Canon EOS Webcam Utility 지원)
             cap = cv2.VideoCapture(self.camera_index, cv2.CAP_AVFOUNDATION)
         elif platform.system() == 'Windows':
-            # MSMF 사용 (더 안정적)
-            cap = cv2.VideoCapture(self.camera_index, cv2.CAP_MSMF)
+            # DirectShow 사용
+            cap = cv2.VideoCapture(self.camera_index, cv2.CAP_DSHOW)
         else:
             # Linux 등
             cap = cv2.VideoCapture(self.camera_index)
@@ -42,13 +42,9 @@ class VideoThread(QThread):
             self.error_signal.emit(error_msg)
             return
         
-        # 🔥 해상도 설정 시도 (옵션)
-        # 일부 카메라에서 문제 발생 시 이 부분을 건너뜀
-        try:
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.target_width)
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.target_height)
-        except:
-            print(f"[Camera] 해상도 설정 실패, 기본 해상도 사용")
+        # 🔥 해상도 설정 시도
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.target_width)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.target_height)
         
         # 실제 설정된 해상도 확인
         actual_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
