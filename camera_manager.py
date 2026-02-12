@@ -160,22 +160,11 @@ class CameraManager(QObject):
         
         # 2. 셔터 트리거
         logger.info("[CameraManager] 셔터 트리거 호출...")
-        # 🔥 셔터 최대 2회 재시도
-        trigger_success = False
-
-        for attempt in range(2):
-            print(f"[CameraManager] 셔터 시도 {attempt+1}/2")
-            if self.shutter.trigger(wait_after=2.0, auto_activate=True):
-                trigger_success = True
-                break
-            time.sleep(1)
-
-        if not trigger_success:
-            error_msg = "셔터 트리거 완전 실패"
+        if not self.shutter.trigger(wait_after=2.0, auto_activate=True):
+            error_msg = "셔터 트리거 실패"
             logger.error(f"[CameraManager] ❌ {error_msg}")
             self.capture_failed.emit(error_msg)
             return None
-
         
         logger.info("[CameraManager] 셔터 트리거 완료, 파일 대기 시작")
         
