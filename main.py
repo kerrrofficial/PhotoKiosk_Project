@@ -2407,16 +2407,13 @@ class KioskMain(QMainWindow):
 
     # 🔥 여기에 추가!
     def run_external_camera_manager(self):
-        """외부 camera_manager.py 실행 및 결과 대기"""
         import subprocess
         import json
         
-        # 1. 결과 파일 삭제 (이전 세션)
         result_path = 'camera_result.json'
         if os.path.exists(result_path):
             os.remove(result_path)
         
-        # 2. camera_manager.py 실행
         python_exe = sys.executable
         script_path = os.path.join(self.base_path, 'camera_manager.py')
         
@@ -2428,18 +2425,16 @@ class KioskMain(QMainWindow):
                 cwd=self.base_path
             )
             
-            self.hide()
+            # self.hide() 제거 - 두 창이 동시에 보임
             self.wait_for_camera_result(process, result_path)
             
         except Exception as e:
             print(f"[외부 촬영] 오류: {e}")
             QMessageBox.critical(self, "촬영 오류", f"촬영 프로그램 실행 실패:\n{e}")
-            self.show()
+            # self.show() 제거 - hide() 안 했으므로 불필요
             self.show_page(0)
 
-
     def wait_for_camera_result(self, process, result_path):
-        """camera_manager 종료 및 결과 파일 대기"""
         import json
         
         check_timer = QTimer(self)
@@ -2461,33 +2456,31 @@ class KioskMain(QMainWindow):
                         if result.get('success'):
                             self.captured_files = result['files']
                             print(f"[외부 촬영] 성공: {len(self.captured_files)}개")
-                            self.show()
+                            # self.show() 제거
                             self.show_page(4)
                         else:
-                            self.show()
+                            # self.show() 제거
                             QMessageBox.warning(self, "촬영 실패", "촬영이 완료되지 않았습니다.")
                             self.show_page(0)
                     
                     except Exception as e:
                         print(f"[외부 촬영] 결과 로드 오류: {e}")
-                        self.show()
+                        # self.show() 제거
                         self.show_page(0)
                 else:
                     print("[외부 촬영] 결과 파일 없음")
-                    self.show()
+                    # self.show() 제거
                     self.show_page(0)
             
             elif check_count >= max_checks:
                 check_timer.stop()
                 process.terminate()
-                self.show()
+                # self.show() 제거
                 QMessageBox.warning(self, "촬영 시간 초과", "촬영 시간이 초과되었습니다.")
                 self.show_page(0)
         
         check_timer.timeout.connect(check_result)
         check_timer.start(1000)
-
-
     
     # -----------------------------------------------------------
     # [Shooting Logic] - 구현 완료된 촬영 로직
