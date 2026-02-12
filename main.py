@@ -2445,42 +2445,61 @@ class KioskMain(QMainWindow):
             nonlocal check_count
             check_count += 1
             
+            # 🔥 디버깅: 주기적 상태 출력
+            if check_count % 10 == 0:
+                print(f"[대기] {check_count}초 경과, 프로세스 상태: {process.poll()}")
+            
             if process.poll() is not None:
                 check_timer.stop()
+                print(f"[외부 촬영] 프로세스 종료 감지!")
                 
                 if os.path.exists(result_path):
+                    print(f"[외부 촬영] 결과 파일 발견: {result_path}")
                     try:
                         with open(result_path, 'r', encoding='utf-8') as f:
                             result = json.load(f)
                         
+                        print(f"[외부 촬영] JSON 로드 성공: {result}")
+                        
                         if result.get('success'):
                             self.captured_files = result['files']
-                            print(f"[외부 촬영] 성공: {len(self.captured_files)}개")
-                            # self.show() 제거
+                            print(f"[외부 촬영] ✅ 성공: {len(self.captured_files)}개 파일")
+                            print(f"[외부 촬영] 파일 목록: {self.captured_files}")
+                            
+                            # 🔥 페이지 전환
+                            print(f"[외부 촬영] 사진 선택 페이지(4)로 이동 중...")
                             self.show_page(4)
+                            print(f"[외부 촬영] 페이지 전환 완료!")
                         else:
-                            # self.show() 제거
+                            print(f"[외부 촬영] ❌ result.success = False")
                             QMessageBox.warning(self, "촬영 실패", "촬영이 완료되지 않았습니다.")
                             self.show_page(0)
                     
                     except Exception as e:
-                        print(f"[외부 촬영] 결과 로드 오류: {e}")
-                        # self.show() 제거
+                        print(f"[외부 촬영] ❌ JSON 로드 오류: {e}")
+                        import traceback
+                        traceback.print_exc()
                         self.show_page(0)
                 else:
-                    print("[외부 촬영] 결과 파일 없음")
-                    # self.show() 제거
+                    print(f"[외부 촬영] ❌ 결과 파일 없음: {result_path}")
+                    # 🔥 파일 존재 여부 재확인
+                    import os
+                    print(f"[외부 촬영] 현재 디렉토리 파일 목록:")
+                    for f in os.listdir('.'):
+                        if 'camera' in f.lower() or 'result' in f.lower():
+                            print(f"  - {f}")
                     self.show_page(0)
             
             elif check_count >= max_checks:
                 check_timer.stop()
                 process.terminate()
-                # self.show() 제거
+                print(f"[외부 촬영] ❌ 타임아웃 (5분)")
                 QMessageBox.warning(self, "촬영 시간 초과", "촬영 시간이 초과되었습니다.")
                 self.show_page(0)
         
         check_timer.timeout.connect(check_result)
         check_timer.start(1000)
+        print(f"[외부 촬영] 결과 대기 시작 (타이머 1초)")
     
     # -----------------------------------------------------------
     # [Shooting Logic] - 구현 완료된 촬영 로직
