@@ -139,9 +139,11 @@ class CameraManager(QObject):
         # 1. 촬영 전 파일 목록 스냅샷
         WATCH_DIR.mkdir(exist_ok=True)
         before_files = {f.name for f in _list_media_files(WATCH_DIR)}
+        print(f"[CameraManager] 촬영 전 파일 수: {len(before_files)}개")
+        print(f"[CameraManager] 감시 폴더: {WATCH_DIR.resolve()}")
         
         # 2. 셔터 트리거
-        if not self.shutter.trigger(wait_after=1.0, auto_activate=True):
+        if not self.shutter.trigger(wait_after=2.0, auto_activate=True):
             error_msg = "셔터 트리거 실패"
             print(f"[CameraManager] ❌ {error_msg}")
             self.capture_failed.emit(error_msg)
@@ -157,6 +159,15 @@ class CameraManager(QObject):
         if new_file is None:
             error_msg = f"촬영 타임아웃 ({self.capture_timeout}초)"
             print(f"[CameraManager] ❌ {error_msg}")
+            
+            # 디버깅: 현재 파일 목록 출력
+            current_files = _list_media_files(WATCH_DIR)
+            print(f"[CameraManager] 현재 파일 수: {len(current_files)}개")
+            if current_files:
+                print("[CameraManager] 발견된 파일들:")
+                for f in current_files:
+                    print(f"  - {f.name}")
+            
             self.capture_failed.emit(error_msg)
             return None
         
@@ -317,14 +328,28 @@ def test_capture_only():
     print("촬영 테스트 (프리뷰 없음)")
     print("="*60)
     
-    manager = CameraManager(preview_camera_index=1)
+    manager = CameraManager(preview_camera_index=1, capture_timeout=15)
     
-    print("\n⚠️ EOS Utility 원격 라이브 뷰 창이 열려있어야 합니다!")
+    print("\n⚠️ 준비사항:")
+    print("  1. EOS Utility 실행 중")
+    print("  2. 원격 라이브 뷰 창 열려있음")
+    print("  3. 저장 폴더: incoming_photos/")
+    
+    # incoming_photos 폴더 확인
+    from pathlib import Path
+    watch_dir = Path("incoming_photos")
+    watch_dir.mkdir(exist_ok=True)
+    
+    existing_files = list(watch_dir.glob("*.JPG")) + list(watch_dir.glob("*.jpg"))
+    print(f"\n현재 incoming_photos/ 파일 수: {len(existing_files)}개")
+    
     print("\n3초 후 촬영을 시작합니다...")
     time.sleep(3)
     
     # 촬영
     manager.start_session()
+    print(f"\n세션 폴더: {manager.session_dir}")
+    
     filepath = manager.capture_photo()
     
     if filepath:
@@ -332,6 +357,9 @@ def test_capture_only():
         print(f"파일: {filepath}")
     else:
         print(f"\n❌ 촬영 실패")
+        print(f"\n디버깅 정보:")
+        print(f"  - EOS Utility 저장 폴더가 incoming_photos/인지 확인하세요")
+        print(f"  - 수동으로 촬영해서 파일이 생성되는지 확인하세요")
     
     manager.cleanup()
 
