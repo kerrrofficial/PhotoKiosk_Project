@@ -21,11 +21,23 @@ camera_manager.py
 
 import os
 import time
+import logging
 from pathlib import Path
 from PyQt6.QtCore import QObject, pyqtSignal
 from camera_thread import VideoThread
 from shutter_trigger import EOSRemoteShutter
 from tether_service import WATCH_DIR, _list_media_files, SUPPORTED_EXT
+
+# 🔥 로그 파일 설정
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[
+        logging.FileHandler('camera_manager.log', encoding='utf-8'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 
 class CameraManager(QObject):
@@ -65,9 +77,11 @@ class CameraManager(QObject):
         self.session_dir = None
         self.captured_files = []
         
-        print("[CameraManager] 초기화 완료")
-        print(f"  - 프리뷰 카메라: #{preview_camera_index}")
-        print(f"  - 프리뷰 해상도: {preview_width}x{preview_height}")
+        logger.info("=" * 60)
+        logger.info("[CameraManager] 초기화 완료")
+        logger.info(f"  - 프리뷰 카메라: #{preview_camera_index}")
+        logger.info(f"  - 프리뷰 해상도: {preview_width}x{preview_height}")
+        logger.info("=" * 60)
     
     def start_preview(self):
         """
@@ -134,23 +148,27 @@ class CameraManager(QObject):
         Returns:
             촬영된 파일 경로 또는 None
         """
-        print("[CameraManager] 📸 촬영 시작...")
+        logger.info("=" * 60)
+        logger.info("[CameraManager] 📸 촬영 시작...")
         
         # 1. 촬영 전 파일 목록 스냅샷
         WATCH_DIR.mkdir(exist_ok=True)
         before_files = {f.name for f in _list_media_files(WATCH_DIR)}
-        print(f"[CameraManager] 촬영 전 파일 수: {len(before_files)}개")
-        print(f"[CameraManager] 감시 폴더: {WATCH_DIR.resolve()}")
+        logger.info(f"[CameraManager] 촬영 전 파일 수: {len(before_files)}개")
+        logger.info(f"[CameraManager] 감시 폴더: {WATCH_DIR.resolve()}")
+        logger.info(f"[CameraManager] 촬영 전 파일 목록: {before_files}")
         
         # 2. 셔터 트리거
+        logger.info("[CameraManager] 셔터 트리거 호출...")
         if not self.shutter.trigger(wait_after=2.0, auto_activate=True):
             error_msg = "셔터 트리거 실패"
-            print(f"[CameraManager] ❌ {error_msg}")
+            logger.error(f"[CameraManager] ❌ {error_msg}")
             self.capture_failed.emit(error_msg)
             return None
         
+        logger.info("[CameraManager] 셔터 트리거 완료, 파일 대기 시작")
+        
         # 3. 새 파일 대기
-        print("[CameraManager] 파일 저장 대기 중...")
         new_file = self._wait_for_new_file(
             before_files,
             timeout=self.capture_timeout
@@ -158,15 +176,15 @@ class CameraManager(QObject):
         
         if new_file is None:
             error_msg = f"촬영 타임아웃 ({self.capture_timeout}초)"
-            print(f"[CameraManager] ❌ {error_msg}")
+            logger.error(f"[CameraManager] ❌ {error_msg}")
             
             # 디버깅: 현재 파일 목록 출력
             current_files = _list_media_files(WATCH_DIR)
-            print(f"[CameraManager] 현재 파일 수: {len(current_files)}개")
+            logger.info(f"[CameraManager] 타임아웃 후 파일 수: {len(current_files)}개")
             if current_files:
-                print("[CameraManager] 발견된 파일들:")
+                logger.info("[CameraManager] 발견된 파일들:")
                 for f in current_files:
-                    print(f"  - {f.name}")
+                    logger.info(f"  - {f.name}")
             
             self.capture_failed.emit(error_msg)
             return None
@@ -180,7 +198,8 @@ class CameraManager(QObject):
         
         self.captured_files.append(str(dest_path))
         
-        print(f"[CameraManager] ✅ 촬영 완료: {dest_path.name}")
+        logger.info(f"[CameraManager] ✅ 촬영 완료: {dest_path.name}")
+        logger.info("=" * 60)
         self.photo_captured.emit(str(dest_path))
         
         return str(dest_path)
@@ -197,36 +216,58 @@ class CameraManager(QObject):
             새 파일 경로 또는 None
         """
         end_time = time.time() + timeout
+        check_count = 0
+        
+        logger.info(f"[CameraManager] 파일 감지 시작 (타임아웃: {timeout}초)")
         
         while time.time() < end_time:
+            check_count += 1
             current_files = _list_media_files(WATCH_DIR)
+            
+            # 현재 파일 목록 출력 (10회마다)
+            if check_count % 10 == 0:
+                current_names = {f.name for f in current_files}
+                logger.info(f"[CameraManager] 체크 #{check_count}: 현재 파일 {len(current_names)}개")
+                new_files = current_names - before_files
+                if new_files:
+                    logger.info(f"[CameraManager] 새 파일 후보: {new_files}")
             
             for f in current_files:
                 if f.name in before_files:
                     continue
                 
+                logger.info(f"[CameraManager] 🔍 새 파일 감지: {f.name}")
+                
                 # 파일 쓰기 완료 확인
                 try:
                     size1 = f.stat().st_size
                 except FileNotFoundError:
+                    logger.warning(f"[CameraManager] 파일 사라짐: {f.name}")
                     continue
                 
                 if size1 <= 0:
+                    logger.warning(f"[CameraManager] 파일 크기 0: {f.name}")
                     continue
                 
+                logger.info(f"[CameraManager] 파일 크기 확인: {size1} bytes, 0.3초 대기...")
                 time.sleep(0.3)
                 
                 try:
                     size2 = f.stat().st_size
                 except FileNotFoundError:
+                    logger.warning(f"[CameraManager] 파일 사라짐 (2차): {f.name}")
                     continue
                 
                 # 파일 크기가 안정적이면 완료
                 if size2 == size1 and size2 > 0:
+                    logger.info(f"[CameraManager] ✅ 파일 안정화 완료: {f.name} ({size2} bytes)")
                     return f
+                else:
+                    logger.info(f"[CameraManager] 파일 쓰기 중: {size1} → {size2} bytes")
             
             time.sleep(0.2)
         
+        logger.error(f"[CameraManager] ❌ 타임아웃! 총 {check_count}회 체크")
         return None
     
     def _create_session(self):
