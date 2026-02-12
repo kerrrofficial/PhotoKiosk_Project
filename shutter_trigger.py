@@ -83,14 +83,13 @@ def test_multiple_shots(count: int = 4):
     for i in range(count):
         print(f"\n[{i+1}/{count}] 촬영 중...")
         
-        if shutter.trigger(wait_after=2.0):
-            print(f"  ✅ 촬영 완료!")
-        else:
-            print(f"  ❌ 촬영 실패")
+        # 🔥 여기를 3초로 늘려보세요!
+        if shutter.trigger(wait_after=3.0):  # 2.0 → 3.0으로 변경
+            print(f"  ✅ Space 키 전송!")
         
         if i < count - 1:
             print("  ⏳ 다음 촬영 준비 중...")
-            time.sleep(1.0)
+            time.sleep(2.0)  # 🔥 이것도 3.0으로 늘려보세요
     
     print("\n" + "="*60)
     print(f"촬영 완료!")
