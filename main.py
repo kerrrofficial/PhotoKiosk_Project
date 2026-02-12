@@ -2436,6 +2436,7 @@ class KioskMain(QMainWindow):
 
     def wait_for_camera_result(self, process, result_path):
         import json
+        import os  # 🔥 여기로 올리기
         
         check_timer = QTimer(self)
         check_count = 0
@@ -2483,7 +2484,6 @@ class KioskMain(QMainWindow):
                 else:
                     print(f"[외부 촬영] ❌ 결과 파일 없음: {result_path}")
                     # 🔥 파일 존재 여부 재확인
-                    import os
                     print(f"[외부 촬영] 현재 디렉토리 파일 목록:")
                     for f in os.listdir('.'):
                         if 'camera' in f.lower() or 'result' in f.lower():
