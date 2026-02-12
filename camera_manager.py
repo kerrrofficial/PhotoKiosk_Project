@@ -500,33 +500,6 @@ def test_full_workflow():
     sys.exit(result)
 
 
-if __name__ == "__main__":
-    import sys
-    
-    # 🔥 독립 실행 모드 체크
-    if len(sys.argv) > 1 and sys.argv[1] == '--standalone':
-        # 독립 촬영 모드
-        run_standalone_mode()
-    else:
-        # 기존 테스트 모드
-        print("\n🎯 카메라 매니저 테스트")
-        print("\n옵션:")
-        print("  1) 프리뷰만 테스트")
-        print("  2) 촬영만 테스트")
-        print("  3) 프리뷰 + 촬영 통합 테스트 (권장)")
-        
-        choice = input("\n선택 (1-3): ").strip()
-        
-        if choice == "1":
-            test_preview_only()
-        elif choice == "2":
-            test_capture_only()
-        elif choice == "3":
-            test_full_workflow()
-        else:
-            print("❌ 잘못된 선택")
-
-
 def run_standalone_mode():
     """
     독립 실행 모드: 8장 촬영 후 camera_result.json 생성
@@ -648,3 +621,30 @@ def run_standalone_mode():
     
     window.show()
     sys.exit(app.exec())
+
+
+if __name__ == "__main__":
+    import sys
+    
+    # 🔥 독립 실행 모드 체크
+    if len(sys.argv) > 1 and sys.argv[1] == '--standalone':
+        # 독립 촬영 모드
+        run_standalone_mode()
+    else:
+        # 기존 테스트 모드
+        print("\n🎯 카메라 매니저 테스트")
+        print("\n옵션:")
+        print("  1) 프리뷰만 테스트")
+        print("  2) 촬영만 테스트")
+        print("  3) 프리뷰 + 촬영 통합 테스트 (권장)")
+        
+        choice = input("\n선택 (1-3): ").strip()
+        
+        if choice == "1":
+            test_preview_only()
+        elif choice == "2":
+            test_capture_only()
+        elif choice == "3":
+            test_full_workflow()
+        else:
+            print("❌ 잘못된 선택")
