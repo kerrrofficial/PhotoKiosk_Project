@@ -503,33 +503,38 @@ def test_full_workflow():
 if __name__ == "__main__":
     import sys
     
-    print("\n🎯 카메라 매니저 테스트")
-    print("\n옵션:")
-    print("  1) 프리뷰만 테스트")
-    print("  2) 촬영만 테스트")
-    print("  3) 프리뷰 + 촬영 통합 테스트 (권장)")
-    
-    choice = input("\n선택 (1-3): ").strip()
-    
-    if choice == "1":
-        test_preview_only()
-    elif choice == "2":
-        test_capture_only()
-    elif choice == "3":
-        test_full_workflow()
+    # 🔥 독립 실행 모드 체크
+    if len(sys.argv) > 1 and sys.argv[1] == '--standalone':
+        # 독립 촬영 모드
+        run_standalone_mode()
     else:
-        print("❌ 잘못된 선택")
+        # 기존 테스트 모드
+        print("\n🎯 카메라 매니저 테스트")
+        print("\n옵션:")
+        print("  1) 프리뷰만 테스트")
+        print("  2) 촬영만 테스트")
+        print("  3) 프리뷰 + 촬영 통합 테스트 (권장)")
+        
+        choice = input("\n선택 (1-3): ").strip()
+        
+        if choice == "1":
+            test_preview_only()
+        elif choice == "2":
+            test_capture_only()
+        elif choice == "3":
+            test_full_workflow()
+        else:
+            print("❌ 잘못된 선택")
 
-# 파일 끝에 추가
 
 def run_standalone_mode():
     """
-    독립 실행 모드: 
-    - 촬영 완료 시 파일 목록을 JSON으로 저장
-    - main.py가 이 JSON을 읽어서 처리
+    독립 실행 모드: 8장 촬영 후 camera_result.json 생성
     """
     import json
-    from PyQt6.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QLabel, QPushButton
+    from PyQt6.QtCore import QTimer
+    from PyQt6.QtGui import QPixmap
     import sys
     
     print("\n🎥 독립 촬영 모드 시작")
@@ -545,10 +550,10 @@ def run_standalone_mode():
         capture_timeout=15
     )
     
-    # 프리뷰 + 촬영 통합 윈도우
+    # 메인 윈도우
     window = QMainWindow()
-    window.setWindowTitle("네컷사진 촬영")
-    window.resize(1920, 1080)
+    window.setWindowTitle("네컷사진 촬영 (8장)")
+    window.resize(1280, 900)
     
     central = QWidget()
     layout = QVBoxLayout(central)
@@ -559,21 +564,21 @@ def run_standalone_mode():
     label.setMinimumSize(1280, 720)
     layout.addWidget(label)
     
-    # 촬영 버튼
-    btn = QPushButton("📸 촬영하기 (8장)")
-    btn.setMinimumHeight(80)
-    layout.addWidget(btn)
-    
     # 진행 상태
     status_label = QLabel("0/8 촬영 완료")
-    status_label.setStyleSheet("font-size: 24px;")
+    status_label.setStyleSheet("font-size: 32px; font-weight: bold;")
     layout.addWidget(status_label)
+    
+    # 촬영 버튼
+    btn = QPushButton("📸 촬영 시작")
+    btn.setMinimumHeight(80)
+    btn.setStyleSheet("font-size: 24px;")
+    layout.addWidget(btn)
     
     window.setCentralWidget(central)
     
     # 프레임 업데이트
     def update_preview(qimage):
-        from PyQt6.QtGui import QPixmap
         pixmap = QPixmap.fromImage(qimage)
         label.setPixmap(pixmap)
     
@@ -592,7 +597,7 @@ def run_standalone_mode():
         nonlocal shot_count
         
         btn.setEnabled(False)
-        btn.setText("촬영 중...")
+        btn.setText("📸 촬영 중...")
         
         filepath = manager.capture_photo()
         
@@ -607,8 +612,9 @@ def run_standalone_mode():
             else:
                 # 다음 촬영 준비
                 QTimer.singleShot(2000, lambda: btn.setEnabled(True))
-                QTimer.singleShot(2000, lambda: btn.setText(f"📸 촬영하기 ({shot_count}/{total_shots})"))
+                QTimer.singleShot(2000, lambda: btn.setText(f"📸 다음 촬영 ({shot_count}/{total_shots})"))
         else:
+            print(f"[촬영] 실패 - 재시도")
             btn.setEnabled(True)
             btn.setText("❌ 재촬영")
     
@@ -617,6 +623,7 @@ def run_standalone_mode():
     # 결과 저장 및 종료
     def save_result_and_exit():
         btn.setText("✅ 촬영 완료!")
+        status_label.setText("저장 중...")
         
         # 촬영된 파일 목록을 JSON으로 저장
         result = {
@@ -631,38 +638,13 @@ def run_standalone_mode():
         
         print(f"\n✅ 결과 저장: {result_path}")
         print(f"촬영된 파일: {len(result['files'])}개")
+        for f in result['files']:
+            print(f"  - {f}")
+        
+        status_label.setText("완료! 2초 후 종료됩니다.")
         
         # 2초 후 종료
         QTimer.singleShot(2000, app.quit)
     
     window.show()
     sys.exit(app.exec())
-
-
-if __name__ == "__main__":
-    import sys
-    
-    # 독립 실행 모드 체크
-    if len(sys.argv) > 1 and sys.argv[1] == '--standalone':
-        run_standalone_mode()
-    else:
-        # 기존 테스트 모드
-        print("\n🎯 카메라 매니저 테스트")
-        print("\n옵션:")
-        print("  0) 창 활성화 테스트")
-        print("  1) 프리뷰만 테스트")
-        print("  2) 촬영만 테스트")
-        print("  3) 프리뷰 + 촬영 통합 테스트 (권장)")
-        
-        choice = input("\n선택 (0-3): ").strip()
-        
-        if choice == "0":
-            test_window_activation()
-        elif choice == "1":
-            test_preview_only()
-        elif choice == "2":
-            test_capture_only()
-        elif choice == "3":
-            test_full_workflow()
-        else:
-            print("❌ 잘못된 선택")
