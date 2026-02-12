@@ -25,8 +25,8 @@ class VideoThread(QThread):
             # AVFoundation 사용 (Canon EOS Webcam Utility 지원)
             cap = cv2.VideoCapture(self.camera_index, cv2.CAP_AVFOUNDATION)
         elif platform.system() == 'Windows':
-            # DirectShow 사용
-            cap = cv2.VideoCapture(self.camera_index, cv2.CAP_DSHOW)
+            # MSMF 사용 (더 안정적)
+            cap = cv2.VideoCapture(self.camera_index, cv2.CAP_MSMF)
         else:
             # Linux 등
             cap = cv2.VideoCapture(self.camera_index)
