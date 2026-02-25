@@ -1856,6 +1856,10 @@ class KioskMain(QMainWindow):
             
             print(f"[인쇄] 이미지 크기: {img.width()} x {img.height()}")
             
+            # DS-RX1 드라이버가 내부적으로 회전시키므로 미리 90도 반시계 회전
+            img = img.transformed(QTransform().rotate(-90))
+            print(f"[인쇄] 회전 후 크기: {img.width()} x {img.height()}")
+            
             # 프린터 설정
             printer_name = self.admin_settings.get('printer_name', '')
             printer = QPrinter(QPrinter.PrinterMode.HighResolution)
