@@ -1840,12 +1840,42 @@ class KioskMain(QMainWindow):
         if not hasattr(self, 'final_print_path'): self.final_print_path = self.final_image_path
         if self.session_data.get('use_qr', True): add_qr_to_image(self.final_print_path)
         self.last_printed_file = self.final_print_path
-        qty = self.session_data.get('print_qty', 1); current_os = sys.platform
-        try: 
-            for _ in range(qty): 
-                if current_os == 'darwin': subprocess.run(['lpr', '-P', self.admin_settings.get('printer_name', 'Canon_E560_series'), '-o', 'fit-to-page', self.final_print_path])
-                elif current_os == 'win32': os.startfile(self.final_print_path, "print")
-        except: pass
+        qty = self.session_data.get('print_qty', 1)
+        
+        try:
+            from PyQt6.QtPrintSupport import QPrinter, QPrinterInfo
+            from PyQt6.QtGui import QImage, QPainter
+            
+            # 프린터 이름으로 찾기
+            printer_name = self.admin_settings.get('printer_name', '')
+            printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+            
+            # 지정된 프린터 찾아서 설정
+            for p in QPrinterInfo.availablePrinters():
+                if p.printerName() == printer_name:
+                    printer = QPrinter(p, QPrinter.PrinterMode.HighResolution)
+                    break
+            
+            printer.setFullPage(True)
+            
+            # 지정 매수만큼 반복 인쇄
+            for _ in range(qty):
+                img = QImage(self.final_print_path)
+                painter = QPainter(printer)
+                rect = painter.viewport()
+                img_scaled = img.scaled(
+                    rect.size(),
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation
+                )
+                x = (rect.width() - img_scaled.width()) // 2
+                y = (rect.height() - img_scaled.height()) // 2
+                painter.drawImage(x, y, img_scaled)
+                painter.end()
+                
+        except Exception as e:
+            print(f"[인쇄 오류] {e}")
+        
         self.show_page(6)
 
     def load_payment_page_logic(self):
