@@ -82,7 +82,7 @@ class KioskMain(QMainWindow):
         # 관리자 설정
         self.admin_settings = {
             'print_qty': 1, 'shot_countdown': 3, 'total_shoot_count': 8,
-            'mirror_mode': True, 'printer_name': 'Canon_E560_series',
+            'mirror_mode': True, 'printer_name': 'DS-RX1',
             'use_qr': True, 
             'payment_mode': 1, # 0:무상, 1:유상, 2:코인
             'use_card': True, 'use_cash': True, 'use_coupon': True,
@@ -1844,7 +1844,17 @@ class KioskMain(QMainWindow):
         
         try:
             from PyQt6.QtPrintSupport import QPrinter, QPrinterInfo
-            from PyQt6.QtGui import QImage, QPainter
+            from PyQt6.QtGui import QImage, QPainter, QPageLayout
+            from PyQt6.QtCore import QSizeF, QMarginsF
+            
+            # 이미지 로드
+            img = QImage(self.final_print_path)
+            if img.isNull():
+                print(f"[인쇄 오류] 이미지 로드 실패: {self.final_print_path}")
+                self.show_page(6)
+                return
+            
+            print(f"[인쇄] 이미지 크기: {img.width()} x {img.height()}")
             
             # 프린터 설정
             printer_name = self.admin_settings.get('printer_name', '')
@@ -1855,26 +1865,23 @@ class KioskMain(QMainWindow):
                     printer = QPrinter(p, QPrinter.PrinterMode.HighResolution)
                     break
             
+            # 용지 방향 강제 지정
+            is_portrait = img.height() > img.width()
+            orientation = QPageLayout.Orientation.Portrait if is_portrait else QPageLayout.Orientation.Landscape
+            print(f"[인쇄] 방향: {'세로' if is_portrait else '가로'}")
+            
+            # 여백 없이 전체 페이지 사용
+            layout = QPageLayout()
+            layout.setOrientation(orientation)
+            layout.setMargins(QMarginsF(0, 0, 0, 0))
+            printer.setPageLayout(layout)
             printer.setFullPage(True)
-            printer.setCopyCount(qty)  # 매수는 여기서 한 번에 지정
-            
-            # 이미지 로드
-            img = QImage(self.final_print_path)
-            if img.isNull():
-                print(f"[인쇄 오류] 이미지 로드 실패: {self.final_print_path}")
-                self.show_page(6)
-                return
-            
-           # 이미지 비율에 따라 용지 방향 자동 설정
-            # 세로형(2400x3600): Portrait / 가로형(3600x2400): Landscape
-            if img.height() > img.width():
-                printer.setPageOrientation(QPageLayout.Orientation.Portrait)
-            else:
-                printer.setPageOrientation(QPageLayout.Orientation.Landscape)
+            printer.setCopyCount(qty)
             
             # 인쇄
             painter = QPainter(printer)
             rect = painter.viewport()
+            print(f"[인쇄] 출력 영역: {rect.width()} x {rect.height()}")
             
             img_scaled = img.scaled(
                 rect.size(),
@@ -1885,7 +1892,7 @@ class KioskMain(QMainWindow):
             y = (rect.height() - img_scaled.height()) // 2
             painter.drawImage(x, y, img_scaled)
             painter.end()
-                
+            
         except Exception as e:
             print(f"[인쇄 오류] {e}")
         
