@@ -1842,15 +1842,49 @@ class KioskMain(QMainWindow):
         self.last_printed_file = self.final_print_path
         qty = self.session_data.get('print_qty', 1)
         
+        # 관리자 설정에서 저장된 프린터 이름 가져오기
+        printer_name = self.admin_settings.get('printer_name', 'DS-RX1')
+
         try:
-            current_os = sys.platform
+            import win32print
+            import win32ui
+            from PIL import Image, ImageWin
+            
+            # 1. 프린터 핸들 가져오기
+            hprinter = win32print.OpenPrinter(printer_name)
+            
             for _ in range(qty):
-                if current_os == 'darwin':
-                    subprocess.run(['lpr', '-P', self.admin_settings.get('printer_name', 'DS-RX1'), '-o', 'fit-to-page', self.final_print_path])
-                elif current_os == 'win32':
-                    os.startfile(self.final_print_path, "print")
+                # 2. DC(Device Context) 생성
+                pdc = win32ui.CreateDC()
+                pdc.CreatePrinterDC(printer_name)
+                
+                # 3. 프린터 해상도 가져오기
+                pw = pdc.GetDeviceCaps(110) # HORZRES
+                ph = pdc.GetDeviceCaps(111) # VERTRES
+                
+                # 4. 이미지 로드 및 해상도에 맞춰 리사이즈
+                img = Image.open(self.final_print_path)
+                img = img.resize((pw, ph), Image.Resampling.LANCZOS)
+                
+                # 5. 인쇄 작업 시작 (여기서 명시적으로 파일명을 주면 팝업 확률이 줄어듦)
+                pdc.StartDoc(f"PhotoKiosk_Print_{datetime.now().strftime('%H%M%S')}")
+                pdc.StartPage()
+                
+                # 6. 비트맵 드로잉 (이 단계가 팝업 없이 바로 픽셀을 꽂는 단계임)
+                dib = ImageWin.Dib(img)
+                dib.draw(pdc.GetHandleOutput(), (0, 0, pw, ph))
+                
+                pdc.EndPage()
+                pdc.EndDoc()
+                pdc.DeleteDC()
+            
+            win32print.ClosePrinter(hprinter)
+            print(f"[인쇄 완료] {printer_name}으로 {qty}장 인쇄를 시작했습니다.")
+                
         except Exception as e:
             print(f"[인쇄 오류] {e}")
+            # 에러 발생 시 사용자에게 알림 (선택 사항)
+            # QMessageBox.warning(self, "인쇄 오류", f"프린터 연결을 확인하세요: {e}")
         
         self.show_page(6)
 
