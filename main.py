@@ -1843,65 +1843,25 @@ class KioskMain(QMainWindow):
         qty = self.session_data.get('print_qty', 1)
         
         try:
-            from PyQt6.QtPrintSupport import QPrinter, QPrinterInfo
-            from PyQt6.QtGui import QImage, QPainter, QPageLayout
-            from PyQt6.QtCore import QSizeF, QMarginsF
-            
-            # 이미지 로드
-            img = QImage(self.final_print_path)
-            if img.isNull():
-                print(f"[인쇄 오류] 이미지 로드 실패: {self.final_print_path}")
-                self.show_page(6)
-                return
-            
-            print(f"[인쇄] 이미지 크기: {img.width()} x {img.height()}")
-            
-            # DS-RX1 드라이버가 내부적으로 회전시키므로 미리 90도 반시계 회전
-            img = img.transformed(QTransform().rotate(-90))
-            print(f"[인쇄] 회전 후 크기: {img.width()} x {img.height()}")
-            
-            # 프린터 설정
-            printer_name = self.admin_settings.get('printer_name', '')
-            printer = QPrinter(QPrinter.PrinterMode.HighResolution)
-            
-            for p in QPrinterInfo.availablePrinters():
-                if p.printerName() == printer_name:
-                    printer = QPrinter(p, QPrinter.PrinterMode.HighResolution)
-                    break
-            
-            # 용지 방향 강제 지정
-            is_portrait = img.height() > img.width()
-            orientation = QPageLayout.Orientation.Portrait if is_portrait else QPageLayout.Orientation.Landscape
-            print(f"[인쇄] 방향: {'세로' if is_portrait else '가로'}")
-            
-            # 여백 없이 전체 페이지 사용
-            layout = QPageLayout()
-            layout.setOrientation(orientation)
-            layout.setMargins(QMarginsF(0, 0, 0, 0))
-            printer.setPageLayout(layout)
-            printer.setFullPage(True)
-            printer.setCopyCount(qty)
-            
-            # 인쇄
-            painter = QPainter(printer)
-            rect = painter.viewport()
-            print(f"[인쇄] 출력 영역: {rect.width()} x {rect.height()}")
-            
-            # 출력 영역에 꽉 차게 스케일 (비율 무시하고 강제 맞춤)
-            img_scaled = img.scaled(
-                rect.width(),
-                rect.height(),
-                Qt.AspectRatioMode.IgnoreAspectRatio,
-                Qt.TransformationMode.SmoothTransformation
-            )
-            painter.drawImage(0, 0, img_scaled)
-            painter.end()
-            
+            import subprocess
+            current_os = sys.platform
+            for i in range(qty):
+                if current_os == 'darwin':
+                    subprocess.run(['lpr', '-P', self.admin_settings.get('printer_name', 'DS-RX1'), '-o', 'fit-to-page', self.final_print_path])
+                elif current_os == 'win32':
+                    subprocess.run(
+                        ['rundll32', 'shimgvw.dll,ImageView_PrintTo',
+                         self.final_print_path,
+                         self.admin_settings.get('printer_name', 'DS-RX1')],
+                        check=False
+                    )
+                    import time
+                    time.sleep(2)  # 인쇄 간격
         except Exception as e:
             print(f"[인쇄 오류] {e}")
         
         self.show_page(6)
-
+        
     def load_payment_page_logic(self):
         min_q = max(2, self.admin_settings.get('print_count_min', 2))
         self.session_data['print_qty'] = min_q
