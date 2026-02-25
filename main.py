@@ -1843,25 +1843,17 @@ class KioskMain(QMainWindow):
         qty = self.session_data.get('print_qty', 1)
         
         try:
-            import subprocess
             current_os = sys.platform
-            for i in range(qty):
+            for _ in range(qty):
                 if current_os == 'darwin':
                     subprocess.run(['lpr', '-P', self.admin_settings.get('printer_name', 'DS-RX1'), '-o', 'fit-to-page', self.final_print_path])
                 elif current_os == 'win32':
-                    subprocess.run(
-                        ['rundll32', 'shimgvw.dll,ImageView_PrintTo',
-                         self.final_print_path,
-                         self.admin_settings.get('printer_name', 'DS-RX1')],
-                        check=False
-                    )
-                    import time
-                    time.sleep(2)  # 인쇄 간격
+                    os.startfile(self.final_print_path, "print")
         except Exception as e:
             print(f"[인쇄 오류] {e}")
         
         self.show_page(6)
-        
+
     def load_payment_page_logic(self):
         min_q = max(2, self.admin_settings.get('print_count_min', 2))
         self.session_data['print_qty'] = min_q
