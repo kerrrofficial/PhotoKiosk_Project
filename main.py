@@ -2867,22 +2867,4 @@ if __name__ == "__main__":
     sys.exit(app.exec())
 
 
-def on_source_click(self, i):
-    """사진 그리드 클릭 처리 (중복 선택 가능)"""
-    print(f"[DEBUG] 클릭된 사진 인덱스: {i}")  # 🔥 디버그 출력
-    print(f"[DEBUG] 현재 선택 상태: {self.selected_indices}")  # 🔥 디버그 출력
-    
-    # 빈 슬롯 찾기
-    if None not in self.selected_indices:
-        print("[DEBUG] 모든 슬롯이 차있음")
-        return
-    
-    # 첫 번째 빈 슬롯에 추가
-    idx = self.selected_indices.index(None)
-    self.selected_indices[idx] = i
-    print(f"[DEBUG] 업데이트 후: {self.selected_indices}")  # 🔥 디버그 출력
-    
-    self.load_select_page()
-
-
 
