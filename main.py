@@ -16,7 +16,7 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QH
                              QSizePolicy, QLineEdit, QCheckBox, QFrame, QScrollArea, QInputDialog, 
                              QDialog, QToolButton, QComboBox, QGraphicsOpacityEffect)
 from PyQt6.QtCore import Qt, QTimer, QSize, QRect, pyqtSignal
-from PyQt6.QtGui import QPixmap, QIcon, QPainter, QColor, QPen, QPageSize, QKeySequence, QShortcut, QImage, QFont, QFontDatabase, QKeyEvent, QScreen, QPainterPath, QTransform
+from PyQt6.QtGui import QPixmap, QIcon, QPainter, QColor, QPen, QPageSize, QKeySequence, QShortcut, QImage, QFont, QFontDatabase, QKeyEvent, QScreen, QPainterPath, QTransform, QPageLayout
 from PyQt6.QtPrintSupport import QPrinter
 from PyQt6.QtCore import QThread
 from payment_service import KSNETPayment
@@ -1846,32 +1846,44 @@ class KioskMain(QMainWindow):
             from PyQt6.QtPrintSupport import QPrinter, QPrinterInfo
             from PyQt6.QtGui import QImage, QPainter
             
-            # 프린터 이름으로 찾기
+            # 프린터 설정
             printer_name = self.admin_settings.get('printer_name', '')
             printer = QPrinter(QPrinter.PrinterMode.HighResolution)
             
-            # 지정된 프린터 찾아서 설정
             for p in QPrinterInfo.availablePrinters():
                 if p.printerName() == printer_name:
                     printer = QPrinter(p, QPrinter.PrinterMode.HighResolution)
                     break
             
             printer.setFullPage(True)
+            printer.setCopyCount(qty)  # 매수는 여기서 한 번에 지정
             
-            # 지정 매수만큼 반복 인쇄
-            for _ in range(qty):
-                img = QImage(self.final_print_path)
-                painter = QPainter(printer)
-                rect = painter.viewport()
-                img_scaled = img.scaled(
-                    rect.size(),
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation
-                )
-                x = (rect.width() - img_scaled.width()) // 2
-                y = (rect.height() - img_scaled.height()) // 2
-                painter.drawImage(x, y, img_scaled)
-                painter.end()
+            # 이미지 로드
+            img = QImage(self.final_print_path)
+            if img.isNull():
+                print(f"[인쇄 오류] 이미지 로드 실패: {self.final_print_path}")
+                self.show_page(6)
+                return
+            
+            # 이미지 비율에 따라 용지 방향 자동 설정
+            if img.width() > img.height():
+                printer.setPageOrientation(QPageLayout.Orientation.Landscape)
+            else:
+                printer.setPageOrientation(QPageLayout.Orientation.Portrait)
+            
+            # 인쇄
+            painter = QPainter(printer)
+            rect = painter.viewport()
+            
+            img_scaled = img.scaled(
+                rect.size(),
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation
+            )
+            x = (rect.width() - img_scaled.width()) // 2
+            y = (rect.height() - img_scaled.height()) // 2
+            painter.drawImage(x, y, img_scaled)
+            painter.end()
                 
         except Exception as e:
             print(f"[인쇄 오류] {e}")
