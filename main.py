@@ -2256,26 +2256,22 @@ class KioskMain(QMainWindow):
         if idx==1: self.load_frame_options() 
         elif idx==2: self.load_payment_page()
         elif idx==3:
-            # 🔥 기존 테더링 방식 (주석 처리)
-            # camera_index = self.admin_settings.get('camera_index', 0)
-            # self.cam_thread = VideoThread(camera_index=camera_index)
-            # self.cam_thread.change_pixmap_signal.connect(self.update_image)
-            # self.cam_thread.start()
-            # 
-            # shoot_n = self.get_admin_shoot_count()
-            # timeout = 20 + shoot_n * 5
-            # 
-            # self.tether_thread = TetherCaptureManyThread(
-            #     expected_count=shoot_n, 
-            #     timeout_sec=timeout, 
-            #     parent=self
-            # )
-            # self.tether_thread.success.connect(self.on_tether_success_many)
-            # self.tether_thread.failed.connect(self.on_tether_failed)
-            # self.tether_thread.start()
+            # 카메라 프리뷰 시작 (캡처보드)
+            camera_index = self.admin_settings.get('camera_index', 1)
+            camera_w = self.admin_settings.get('camera_width', 1920)
+            camera_h = self.admin_settings.get('camera_height', 1080)
             
-            # 🔥 새로운 방식: camera_manager 독립 실행
-            self.run_external_camera_manager()
+            self.cam_thread = VideoThread(
+                camera_index=camera_index,
+                target_width=camera_w,
+                target_height=camera_h
+            )
+            self.cam_thread.change_pixmap_signal.connect(self.update_image)
+            self.cam_thread.error_signal.connect(self.on_camera_error)
+            self.cam_thread.start()
+            
+            # 페이지 진입 즉시 자동 촬영 시작
+            QTimer.singleShot(500, self.start_shooting)
 
         elif idx==4:
             print("[DEBUG] 사진 선택 페이지 진입")
