@@ -78,10 +78,11 @@ class VideoThread(QThread):
                 QImage.Format.Format_RGB888
             )
             
-            # 3. 메인 쓰레드로 이미지 전송
+            # 3. 메인 쓰레드로 이미지 전송 (30fps 제한)
             self.change_pixmap_signal.emit(convert_to_qt_format.copy())
             
             frame_count += 1
+            self.msleep(33)  # 약 30fps로 제한
         
         # 종료 시 카메라 해제
         print(f"[Camera] 총 {frame_count}프레임 처리 완료")
