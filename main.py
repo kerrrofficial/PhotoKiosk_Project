@@ -1843,52 +1843,59 @@ class KioskMain(QMainWindow):
         self.show_page(5)
 
     def start_printing(self):
-        if not hasattr(self, 'final_print_path'): self.final_print_path = self.final_image_path
-        if self.session_data.get('use_qr', True): add_qr_to_image(self.final_print_path)
+        if not hasattr(self, 'final_print_path'): 
+            self.final_print_path = self.final_image_path
+        if self.session_data.get('use_qr', True): 
+            add_qr_to_image(self.final_print_path)
+        
         self.last_printed_file = self.final_print_path
         qty = self.session_data.get('print_qty', 1)
-        
-        # 관리자 설정에서 저장된 프린터 이름 가져오기
         printer_name = self.admin_settings.get('printer_name', 'DS-RX1')
 
         try:
-        
-            # 1. 프린터 핸들 가져오기
-            hprinter = win32print.OpenPrinter(printer_name)
-            
-            for _ in range(qty):
-                # 2. DC(Device Context) 생성
+            # 필수 라이브러리를 함수 내부에서 다시 한번 명시적으로 임포트
+            import win32print
+            import win32ui
+            from PIL import Image, ImageWin
+            import datetime
+
+            print(f"[인쇄 시작] 프린터: {printer_name}, 수량: {qty}장")
+
+            for i in range(qty):
+                # 1. 프린터 DC 생성
                 pdc = win32ui.CreateDC()
                 pdc.CreatePrinterDC(printer_name)
                 
-                # 3. 프린터 해상도 가져오기
-                pw = pdc.GetDeviceCaps(110) # HORZRES
-                ph = pdc.GetDeviceCaps(111) # VERTRES
+                # 2. 프린터 해상도(출력 가능 영역) 가져오기
+                pw = pdc.GetDeviceCaps(110)  # HORZRES
+                ph = pdc.GetDeviceCaps(111)  # VERTRES
                 
-                # 4. 이미지 로드 및 해상도에 맞춰 리사이즈
+                # 3. 이미지 로드 및 프린터 해상도에 맞게 리사이즈
                 img = Image.open(self.final_print_path)
+                # PIL.Image.LANCZOS 또는 Resampling.LANCZOS 사용
                 img = img.resize((pw, ph), Image.Resampling.LANCZOS)
                 
-                # 5. 인쇄 작업 시작 (여기서 명시적으로 파일명을 주면 팝업 확률이 줄어듦)
-                pdc.StartDoc(f"PhotoKiosk_Print_{datetime.now().strftime('%H%M%S')}")
+                # 4. 문서 시작 (인쇄 창 팝업 방지를 위해 문서 이름 지정)
+                doc_name = f"Kiosk_Print_{datetime.datetime.now().strftime('%H%M%S')}_{i+1}"
+                pdc.StartDoc(doc_name)
                 pdc.StartPage()
                 
-                # 6. 비트맵 드로잉 (이 단계가 팝업 없이 바로 픽셀을 꽂는 단계임)
+                # 5. 비트맵 드로잉 (실제 인쇄 데이터를 픽셀 단위로 전송)
                 dib = ImageWin.Dib(img)
                 dib.draw(pdc.GetHandleOutput(), (0, 0, pw, ph))
                 
                 pdc.EndPage()
                 pdc.EndDoc()
                 pdc.DeleteDC()
-            
-            win32print.ClosePrinter(hprinter)
-            print(f"[인쇄 완료] {printer_name}으로 {qty}장 인쇄를 시작했습니다.")
+                print(f"[인쇄 중] {i+1}/{qty} 완료")
+
+            print("[인쇄 완료] 모든 작업이 프린터 스풀러로 전송되었습니다.")
                 
         except Exception as e:
-            print(f"[인쇄 오류] {e}")
-            # 에러 발생 시 사용자에게 알림 (선택 사항)
-            # QMessageBox.warning(self, "인쇄 오류", f"프린터 연결을 확인하세요: {e}")
+            # 여기서 Image 관련 에러가 사라졌는지 확인 가능합니다.
+            print(f"[인쇄 오류 상세] {e}")
         
+        # 인쇄 완료 페이지(6번)로 이동
         self.show_page(6)
 
     def load_payment_page_logic(self):
