@@ -1865,11 +1865,12 @@ class KioskMain(QMainWindow):
                 self.show_page(6)
                 return
             
-            # 이미지 비율에 따라 용지 방향 자동 설정
-            if img.width() > img.height():
-                printer.setPageOrientation(QPageLayout.Orientation.Landscape)
-            else:
+           # 이미지 비율에 따라 용지 방향 자동 설정
+            # 세로형(2400x3600): Portrait / 가로형(3600x2400): Landscape
+            if img.height() > img.width():
                 printer.setPageOrientation(QPageLayout.Orientation.Portrait)
+            else:
+                printer.setPageOrientation(QPageLayout.Orientation.Landscape)
             
             # 인쇄
             painter = QPainter(printer)
