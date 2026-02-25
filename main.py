@@ -9,6 +9,12 @@ import json
 import glob
 import random
 import subprocess
+try:
+    import win32print
+    import win32ui
+    from PIL import ImageWin
+except:
+    pass
 from datetime import datetime
 
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -1846,10 +1852,7 @@ class KioskMain(QMainWindow):
         printer_name = self.admin_settings.get('printer_name', 'DS-RX1')
 
         try:
-            import win32print
-            import win32ui
-            from PIL import Image, ImageWin
-            
+        
             # 1. 프린터 핸들 가져오기
             hprinter = win32print.OpenPrinter(printer_name)
             
