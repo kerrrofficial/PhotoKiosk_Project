@@ -1887,14 +1887,14 @@ class KioskMain(QMainWindow):
             rect = painter.viewport()
             print(f"[인쇄] 출력 영역: {rect.width()} x {rect.height()}")
             
+            # 출력 영역에 꽉 차게 스케일 (비율 무시하고 강제 맞춤)
             img_scaled = img.scaled(
-                rect.size(),
-                Qt.AspectRatioMode.KeepAspectRatio,
+                rect.width(),
+                rect.height(),
+                Qt.AspectRatioMode.IgnoreAspectRatio,
                 Qt.TransformationMode.SmoothTransformation
             )
-            x = (rect.width() - img_scaled.width()) // 2
-            y = (rect.height() - img_scaled.height()) // 2
-            painter.drawImage(x, y, img_scaled)
+            painter.drawImage(0, 0, img_scaled)
             painter.end()
             
         except Exception as e:
