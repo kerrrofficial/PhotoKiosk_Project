@@ -1850,54 +1850,76 @@ class KioskMain(QMainWindow):
     def start_printing(self):
         paper_type = self.session_data.get('paper_type', 'full')
         is_half = paper_type == 'half'
-        
-        if is_half:
-            # 하프컷: 좌우 2장으로 분리 후 DS-RX1_Cut으로 인쇄
-            l_key = self.session_data.get('layout_key')
-            fk = f"half_{l_key}"
-            fp = self.session_data.get('frame_path')
-            sp = [self.captured_files[i] for i in self.selected_indices if i is not None]
-            
-            left_path, right_path = merge_half_cut(sp, fp, fk)
-            self.last_printed_file = left_path
-            qty = self.session_data.get('print_qty', 1)
-            printer_name = 'DS-RX1_Cut'
-            
-            try:
-                import win32print, win32ui
-                from PIL import Image, ImageWin
-                import datetime as dt
-                
-                for path in [left_path, right_path]:
-                    for i in range(qty):
-                        pdc = win32ui.CreateDC()
-                        pdc.CreatePrinterDC(printer_name)
-                        pw = pdc.GetDeviceCaps(110)
-                        ph = pdc.GetDeviceCaps(111)
-                        
-                        img = Image.open(path)
-                        print(f"[하프컷 인쇄] {path} / 이미지: {img.width}x{img.height} / 프린터영역: {pw}x{ph}")
-                        
-                        if img.width > img.height:
-                            img = img.rotate(90, expand=True)
-                        
-                        img = img.resize((pw, ph), Image.Resampling.LANCZOS)
-                        
-                        doc_name = f"Half_{dt.datetime.now().strftime('%H%M%S')}_{i+1}"
-                        pdc.StartDoc(doc_name)
-                        pdc.StartPage()
-                        dib = ImageWin.Dib(img)
-                        dib.draw(pdc.GetHandleOutput(), (0, 0, pw, ph))
-                        pdc.EndPage()
-                        pdc.EndDoc()
-                        pdc.DeleteDC()
-                        print(f"[하프컷 인쇄] {i+1}/{qty} 완료")
-                        
-            except Exception as e:
-                print(f"[하프컷 인쇄 오류] {e}")
-            
-            self.show_page(6)
-            return
+        qty = self.session_data.get('print_qty', 1)
+
+        try:
+            import win32ui
+            from PIL import Image, ImageWin
+            import datetime as dt
+
+            def print_image(path, printer_name):
+                """단일 이미지를 지정 프린터로 출력"""
+                img = Image.open(path)
+                print(f"[인쇄] 파일: {path} / 크기: {img.width}x{img.height}")
+
+                pdc = win32ui.CreateDC()
+                pdc.CreatePrinterDC(printer_name)
+                pw = pdc.GetDeviceCaps(110)
+                ph = pdc.GetDeviceCaps(111)
+                print(f"[인쇄] 프린터 영역: {pw}x{ph}")
+
+                # 가로형 이미지는 90도 회전
+                if img.width > img.height:
+                    img = img.rotate(90, expand=True)
+                    print(f"[인쇄] 90도 회전 후: {img.width}x{img.height}")
+
+                img = img.resize((pw, ph), Image.Resampling.LANCZOS)
+
+                doc_name = f"Kiosk_{dt.datetime.now().strftime('%H%M%S')}"
+                pdc.StartDoc(doc_name)
+                pdc.StartPage()
+                dib = ImageWin.Dib(img)
+                dib.draw(pdc.GetHandleOutput(), (0, 0, pw, ph))
+                pdc.EndPage()
+                pdc.EndDoc()
+                pdc.DeleteDC()
+
+            if is_half:
+                # 하프컷: 합성 → 좌우 분리 → DS-RX1_Cut으로 각각 qty매 출력
+                l_key = self.session_data.get('layout_key')
+                fk = f"half_{l_key}"
+                fp = self.session_data.get('frame_path')
+                sp = [self.captured_files[i] for i in self.selected_indices if i is not None]
+
+                left_path, right_path = merge_half_cut(sp, fp, fk)
+                self.last_printed_file = left_path
+                printer_name = 'DS-RX1_Cut'
+
+                for i in range(qty):
+                    print(f"[하프컷 인쇄] {i+1}/{qty} - 좌측")
+                    print_image(left_path, printer_name)
+                    print(f"[하프컷 인쇄] {i+1}/{qty} - 우측")
+                    print_image(right_path, printer_name)
+
+            else:
+                # 풀컷: final_print_path → DS-RX1로 qty매 출력
+                if not hasattr(self, 'final_print_path'):
+                    self.final_print_path = self.final_image_path
+                if self.session_data.get('use_qr', True):
+                    add_qr_to_image(self.final_print_path)
+                self.last_printed_file = self.final_print_path
+                printer_name = self.admin_settings.get('printer_name', 'DS-RX1')
+
+                for i in range(qty):
+                    print(f"[풀컷 인쇄] {i+1}/{qty}")
+                    print_image(self.final_print_path, printer_name)
+
+            print("[인쇄 완료]")
+
+        except Exception as e:
+            print(f"[인쇄 오류] {e}")
+
+        self.show_page(6)
         
         # --- 풀컷 인쇄 (기존 코드) ---
         if not hasattr(self, 'final_print_path'): 
