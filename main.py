@@ -1866,9 +1866,12 @@ class KioskMain(QMainWindow):
             from PIL import Image, ImageWin
             import datetime as dt
 
+            print(f"[인쇄 시작] 파일: {self.final_print_path}")
+            print(f"[인쇄 시작] 프린터: {printer_name}, 수량: {qty}, 하프컷: {is_half}")
+
             for i in range(qty):
                 img = Image.open(self.final_print_path)
-                print(f"[인쇄] {i+1}/{qty} / 크기: {img.width}x{img.height} / 프린터: {printer_name}")
+                print(f"[인쇄] {i+1}/{qty} / 이미지 크기: {img.width}x{img.height}")
 
                 pdc = win32ui.CreateDC()
                 pdc.CreatePrinterDC(printer_name)
@@ -1879,6 +1882,7 @@ class KioskMain(QMainWindow):
                 # 가로형 이미지는 90도 회전
                 if img.width > img.height:
                     img = img.rotate(90, expand=True)
+                    print(f"[인쇄] 90도 회전 후: {img.width}x{img.height}")
 
                 img = img.resize((pw, ph), Image.Resampling.LANCZOS)
 
