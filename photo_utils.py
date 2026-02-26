@@ -133,7 +133,7 @@ def merge_4cut_vertical(image_paths, frame_path=None, layout_key="full_4cut"):
     layout_key (예: 'full_v4a', 'half_v3')에 따라 사진을 배치하고 프레임을 합성
     """
     # 가로형 레이아웃은 캔버스를 가로로 생성
-    horizontal_layouts = ['h2', 'h4', 'h5', 'h10']
+    horizontal_layouts = ['h2', 'h3', 'h4', 'h5', 'h10']
     is_horizontal = any(layout_key.endswith(h) for h in horizontal_layouts)
     
     if is_horizontal:
@@ -216,27 +216,42 @@ def add_qr_to_image(image_path, url="https://example.com"):
 def merge_half_cut(image_paths, frame_path=None, layout_key="half_v4"):
     """
     하프컷 전용 합성 함수
-    풀컷과 동일하게 합성 후 좌(0~1200) / 우(1200~2400) 두 장으로 분리 저장
+    세로형: 좌(0~1200) / 우(1200~2400) 커팅 → 각 1200x3600
+    가로형: 상(0~1200) / 하(1200~2400) 커팅 → 각 3600x1200
     """
-    # 풀컷과 동일하게 합성
     full_path = merge_4cut_vertical(image_paths, frame_path, layout_key)
     
     save_dir = os.path.join("data", "results")
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    
     full_img = Image.open(full_path)
     
-    # 좌측 (0~1200)
-    left_img = full_img.crop((0, 0, 1200, 3600))
-    left_path = os.path.join(save_dir, f"half_left_{timestamp}.jpg")
-    left_img.save(left_path, quality=95)
+    # 가로형 여부 판단
+    horizontal_layouts = ['h2', 'h3', 'h4', 'h5', 'h10']
+    is_horizontal = any(layout_key.endswith(h) for h in horizontal_layouts)
     
-    # 우측 (1200~2400)
-    right_img = full_img.crop((1200, 0, 2400, 3600))
-    right_path = os.path.join(save_dir, f"half_right_{timestamp}.jpg")
-    right_img.save(right_path, quality=95)
-    
-    print(f"[하프컷] 좌측: {left_path}")
-    print(f"[하프컷] 우측: {right_path}")
-    
-    return left_path, right_path
+    if is_horizontal:
+        # 가로형: 상하 커팅 (3600x2400 → 3600x1200 두 장)
+        top_img = full_img.crop((0, 0, 3600, 1200))
+        top_path = os.path.join(save_dir, f"half_top_{timestamp}.jpg")
+        top_img.save(top_path, quality=95)
+        
+        bottom_img = full_img.crop((0, 1200, 3600, 2400))
+        bottom_path = os.path.join(save_dir, f"half_bottom_{timestamp}.jpg")
+        bottom_img.save(bottom_path, quality=95)
+        
+        print(f"[하프컷 가로형] 상단: {top_path}")
+        print(f"[하프컷 가로형] 하단: {bottom_path}")
+        return top_path, bottom_path
+    else:
+        # 세로형: 좌우 커팅 (2400x3600 → 1200x3600 두 장)
+        left_img = full_img.crop((0, 0, 1200, 3600))
+        left_path = os.path.join(save_dir, f"half_left_{timestamp}.jpg")
+        left_img.save(left_path, quality=95)
+        
+        right_img = full_img.crop((1200, 0, 2400, 3600))
+        right_path = os.path.join(save_dir, f"half_right_{timestamp}.jpg")
+        right_img.save(right_path, quality=95)
+        
+        print(f"[하프컷 세로형] 좌측: {left_path}")
+        print(f"[하프컷 세로형] 우측: {right_path}")
+        return left_path, right_path
