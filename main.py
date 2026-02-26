@@ -32,7 +32,7 @@ from payment_service import KSNETPayment
 from camera_thread import VideoThread
 from photo_utils import merge_4cut_vertical, merge_half_cut, apply_filter, add_qr_to_image, FRAME_LAYOUTS
 from widgets import ClickableLabel, BackArrowWidget, CircleButton, GradientButton, QRCheckWidget, GlobalTimerWidget, PaymentPopup
-from constants import LAYOUT_OPTIONS_MASTER
+from constants import LAYOUT_OPTIONS_MASTER, LAYOUT_SLOT_COUNT
 from tether_service import capture_one_photo_blocking
 from tether_worker import TetherCaptureManyThread
 
@@ -52,6 +52,11 @@ class PaymentApproveThread(QThread):
 class KioskMain(QMainWindow):
 
     def get_admin_shoot_count(self) -> int:
+        # 하프컷은 슬롯 수 기준, 풀컷은 어드민 설정 기준
+        layout_full_key = f"{self.session_data.get('paper_type', 'full')}_{self.session_data.get('layout_key', 'v2')}"
+        slot_count = LAYOUT_SLOT_COUNT.get(layout_full_key)
+        if slot_count:
+            return slot_count
         n = int(self.admin_settings.get("total_shoot_count", 8))
         return max(1, min(12, n))
 
@@ -2003,9 +2008,19 @@ class KioskMain(QMainWindow):
 
     def select_frame_and_go(self, item):
         self.session_data.update({"paper_type": item['paper'], "layout_key": item['layout'], "frame_path": item['path']})
-        # 레이아웃 이름에서 숫자 추출 (예: v4a -> 4)
-        import re; nums = re.findall(r'\d+', item['layout'])
-        self.session_data['target_count'] = int(nums[0]) if nums else 4
+        
+        # LAYOUT_SLOT_COUNT에서 정확한 슬롯 수 가져오기
+        layout_full_key = f"{item['paper']}_{item['layout']}"
+        slot_count = LAYOUT_SLOT_COUNT.get(layout_full_key)
+        
+        if slot_count:
+            self.session_data['target_count'] = slot_count
+        else:
+            # fallback: 레이아웃 이름에서 숫자 추출
+            import re; nums = re.findall(r'\d+', item['layout'])
+            self.session_data['target_count'] = int(nums[0]) if nums else 4
+        
+        print(f"[레이아웃] {layout_full_key} → 슬롯 수: {self.session_data['target_count']}")
         self.show_page(2)
     
     def load_frame_options(self):

@@ -150,8 +150,8 @@ def merge_4cut_vertical(image_paths, frame_path=None, layout_key="full_4cut"):
 
     # --- 1. 사진 배치 ---
     for idx, coords in enumerate(layout_data):
-        # 촬영된 사진 수보다 프레임 칸이 많으면 반복 사용 (하프컷 등)
-        img_index = idx % len(image_paths) 
+        # 슬롯 수만큼 이미지가 있으면 1:1 배치, 부족하면 반복
+        img_index = idx % len(image_paths)
         
         if img_index < len(image_paths):
             img_path = image_paths[img_index]
@@ -162,9 +162,7 @@ def merge_4cut_vertical(image_paths, frame_path=None, layout_key="full_4cut"):
                 img = ImageOps.fit(img, (w, h), centering=(0.5, 0.5))
                 canvas.paste(img, (x, y))
                 
-                # [하프컷 특수처리] 왼쪽 줄(x < 1200)에 그렸다면, 오른쪽 줄에도 복사
-                if "half" in layout_key and x < 1200:
-                    canvas.paste(img, (x + 1200, y))
+                pass  # 하프컷도 풀컷과 동일하게 처리
                     
             except Exception as e:
                 print(f"이미지 배치 오류 ({img_path}): {e}")
@@ -216,24 +214,22 @@ def add_qr_to_image(image_path, url="https://example.com"):
 def merge_half_cut(image_paths, frame_path=None, layout_key="half_v4"):
     """
     하프컷 전용 합성 함수
-    2400x3600 캔버스로 합성 후 좌(0~1200) / 우(1200~2400) 두 장으로 분리 저장
+    풀컷과 동일하게 합성 후 좌(0~1200) / 우(1200~2400) 두 장으로 분리 저장
     """
-    # 풀 캔버스로 합성 (기존 함수 재사용)
+    # 풀컷과 동일하게 합성
     full_path = merge_4cut_vertical(image_paths, frame_path, layout_key)
     
-    # 저장 폴더
     save_dir = os.path.join("data", "results")
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     
-    # 합성된 이미지 열기
     full_img = Image.open(full_path)
     
-    # 좌측 (0 ~ 1200)
+    # 좌측 (0~1200)
     left_img = full_img.crop((0, 0, 1200, 3600))
     left_path = os.path.join(save_dir, f"half_left_{timestamp}.jpg")
     left_img.save(left_path, quality=95)
     
-    # 우측 (1200 ~ 2400)
+    # 우측 (1200~2400)
     right_img = full_img.crop((1200, 0, 2400, 3600))
     right_path = os.path.join(save_dir, f"half_right_{timestamp}.jpg")
     right_img.save(right_path, quality=95)
