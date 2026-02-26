@@ -64,13 +64,8 @@ class VideoThread(QThread):
                 print(f"⚠️ 프레임 읽기 실패 (frame #{frame_count})")
                 continue
             
-            # 1. 4:3 → 16:9 크롭 (납작함 보정)
-            # 640x480에서 640x360으로 상하 크롭
-            h_frame, w_frame = cv_img.shape[:2]
-            target_h = int(w_frame * 9 / 16)  # 16:9 비율 높이 계산
-            if target_h < h_frame:
-                crop_top = (h_frame - target_h) // 2
-                cv_img = cv_img[crop_top:crop_top + target_h, :]
+            # 1. BGR -> RGB 변환
+            rgb_img = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
 
             # 2. BGR -> RGB 변환
             rgb_img = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)

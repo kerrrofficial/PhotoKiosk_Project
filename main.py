@@ -2246,8 +2246,16 @@ class KioskMain(QMainWindow):
         painter = QPainter(final_pixmap)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         
-        # 카메라 영상을 계산된 영역에 꽉 채우기
+        # 카메라 영상 4:3 → 16:9 크롭 (납작함 보정)
         cam_pixmap = QPixmap.fromImage(qt_img)
+        cam_w = cam_pixmap.width()
+        cam_h = cam_pixmap.height()
+        target_cam_h = int(cam_w * 9 / 16)
+        if target_cam_h < cam_h:
+            cam_crop_y = (cam_h - target_cam_h) // 2
+            cam_pixmap = cam_pixmap.copy(0, cam_crop_y, cam_w, target_cam_h)
+
+        # 카메라 영상을 계산된 영역에 꽉 채우기
         scaled_cam = cam_pixmap.scaled(
             display_w, display_h,
             Qt.AspectRatioMode.KeepAspectRatioByExpanding,
