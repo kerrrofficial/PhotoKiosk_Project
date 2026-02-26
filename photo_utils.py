@@ -212,3 +212,33 @@ def add_qr_to_image(image_path, url="https://example.com"):
         img.paste(qr, (img.width - qr_size - 50, img.height - qr_size - 50))
         img.save(image_path)
     except: pass
+
+def merge_half_cut(image_paths, frame_path=None, layout_key="half_v4"):
+    """
+    하프컷 전용 합성 함수
+    2400x3600 캔버스로 합성 후 좌(0~1200) / 우(1200~2400) 두 장으로 분리 저장
+    """
+    # 풀 캔버스로 합성 (기존 함수 재사용)
+    full_path = merge_4cut_vertical(image_paths, frame_path, layout_key)
+    
+    # 저장 폴더
+    save_dir = os.path.join("data", "results")
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    
+    # 합성된 이미지 열기
+    full_img = Image.open(full_path)
+    
+    # 좌측 (0 ~ 1200)
+    left_img = full_img.crop((0, 0, 1200, 3600))
+    left_path = os.path.join(save_dir, f"half_left_{timestamp}.jpg")
+    left_img.save(left_path, quality=95)
+    
+    # 우측 (1200 ~ 2400)
+    right_img = full_img.crop((1200, 0, 2400, 3600))
+    right_path = os.path.join(save_dir, f"half_right_{timestamp}.jpg")
+    right_img.save(right_path, quality=95)
+    
+    print(f"[하프컷] 좌측: {left_path}")
+    print(f"[하프컷] 우측: {right_path}")
+    
+    return left_path, right_path

@@ -30,7 +30,7 @@ from payment_service import KSNETPayment
 # [모듈 import]
 # 같은 폴더에 camera_thread.py, photo_utils.py, widgets.py, constants.py 가 있어야 합니다.
 from camera_thread import VideoThread
-from photo_utils import merge_4cut_vertical, apply_filter, add_qr_to_image, FRAME_LAYOUTS
+from photo_utils import merge_4cut_vertical, merge_half_cut, apply_filter, add_qr_to_image, FRAME_LAYOUTS
 from widgets import ClickableLabel, BackArrowWidget, CircleButton, GradientButton, QRCheckWidget, GlobalTimerWidget, PaymentPopup
 from constants import LAYOUT_OPTIONS_MASTER
 from tether_service import capture_one_photo_blocking
@@ -1843,6 +1843,58 @@ class KioskMain(QMainWindow):
         self.show_page(5)
 
     def start_printing(self):
+        paper_type = self.session_data.get('paper_type', 'full')
+        is_half = paper_type == 'half'
+        
+        if is_half:
+            # 하프컷: 좌우 2장으로 분리 후 DS-RX1_Cut으로 인쇄
+            l_key = self.session_data.get('layout_key')
+            fk = f"half_{l_key}"
+            fp = self.session_data.get('frame_path')
+            sp = [self.captured_files[i] for i in self.selected_indices if i is not None]
+            
+            left_path, right_path = merge_half_cut(sp, fp, fk)
+            self.last_printed_file = left_path
+            qty = self.session_data.get('print_qty', 1)
+            printer_name = 'DS-RX1_Cut'
+            
+            try:
+                import win32print, win32ui
+                from PIL import Image, ImageWin
+                import datetime as dt
+                
+                for path in [left_path, right_path]:
+                    for i in range(qty):
+                        pdc = win32ui.CreateDC()
+                        pdc.CreatePrinterDC(printer_name)
+                        pw = pdc.GetDeviceCaps(110)
+                        ph = pdc.GetDeviceCaps(111)
+                        
+                        img = Image.open(path)
+                        print(f"[하프컷 인쇄] {path} / 이미지: {img.width}x{img.height} / 프린터영역: {pw}x{ph}")
+                        
+                        if img.width > img.height:
+                            img = img.rotate(90, expand=True)
+                        
+                        img = img.resize((pw, ph), Image.Resampling.LANCZOS)
+                        
+                        doc_name = f"Half_{dt.datetime.now().strftime('%H%M%S')}_{i+1}"
+                        pdc.StartDoc(doc_name)
+                        pdc.StartPage()
+                        dib = ImageWin.Dib(img)
+                        dib.draw(pdc.GetHandleOutput(), (0, 0, pw, ph))
+                        pdc.EndPage()
+                        pdc.EndDoc()
+                        pdc.DeleteDC()
+                        print(f"[하프컷 인쇄] {i+1}/{qty} 완료")
+                        
+            except Exception as e:
+                print(f"[하프컷 인쇄 오류] {e}")
+            
+            self.show_page(6)
+            return
+        
+        # --- 풀컷 인쇄 (기존 코드) ---
         if not hasattr(self, 'final_print_path'): 
             self.final_print_path = self.final_image_path
         if self.session_data.get('use_qr', True): 
@@ -1852,59 +1904,6 @@ class KioskMain(QMainWindow):
         qty = self.session_data.get('print_qty', 1)
         printer_name = self.admin_settings.get('printer_name', 'DS-RX1')
 
-        try:
-            # 필수 라이브러리를 함수 내부에서 다시 한번 명시적으로 임포트
-            import win32print
-            import win32ui
-            from PIL import Image, ImageWin
-            import datetime
-
-            print(f"[인쇄 시작] 프린터: {printer_name}, 수량: {qty}장")
-
-            for i in range(qty):
-                # 1. 프린터 DC 생성
-                pdc = win32ui.CreateDC()
-                pdc.CreatePrinterDC(printer_name)
-                
-                # 2. 프린터 해상도(출력 가능 영역) 가져오기
-                pw = pdc.GetDeviceCaps(110)  # HORZRES
-                ph = pdc.GetDeviceCaps(111)  # VERTRES
-                
-                # 3. 이미지 로드
-                img = Image.open(self.final_print_path)
-                print(f"[인쇄] 이미지 원본: {img.width} x {img.height}")
-                print(f"[인쇄] 프린터 출력영역: {pw} x {ph}")
-                
-                # 가로형 이미지(width > height)는 90도 회전 후 출력
-                if img.width > img.height:
-                    img = img.rotate(90, expand=True)
-                    print(f"[인쇄] 가로형 감지 → 90도 회전: {img.width} x {img.height}")
-                
-                img = img.resize((pw, ph), Image.Resampling.LANCZOS)
-                
-                # 4. 문서 시작 (인쇄 창 팝업 방지를 위해 문서 이름 지정)
-                doc_name = f"Kiosk_Print_{datetime.datetime.now().strftime('%H%M%S')}_{i+1}"
-                pdc.StartDoc(doc_name)
-                pdc.StartPage()
-                
-                # 5. 비트맵 드로잉 (실제 인쇄 데이터를 픽셀 단위로 전송)
-                dib = ImageWin.Dib(img)
-                dib.draw(pdc.GetHandleOutput(), (0, 0, pw, ph))
-                
-                pdc.EndPage()
-                pdc.EndDoc()
-                pdc.DeleteDC()
-                print(f"[인쇄 중] {i+1}/{qty} 완료")
-
-            print("[인쇄 완료] 모든 작업이 프린터 스풀러로 전송되었습니다.")
-                
-        except Exception as e:
-            # 여기서 Image 관련 에러가 사라졌는지 확인 가능합니다.
-            print(f"[인쇄 오류 상세] {e}")
-        
-        # 인쇄 완료 페이지(6번)로 이동
-        self.show_page(6)
-
     def load_payment_page_logic(self):
         min_q = max(2, self.admin_settings.get('print_count_min', 2))
         self.session_data['print_qty'] = min_q
@@ -1912,7 +1911,7 @@ class KioskMain(QMainWindow):
         self.update_button_ui()
 
         # 🔥 실시간 여백 업데이트 로직 추가
-        mode = self.admin_settings.get("payment_mode", 1)
+        mode = self.admin_settings.get("payment_mode", 0)
         # 여기서 수치를 조정해 보세요 (예: 160 -> 250)
         top_margin = 150 if mode == 0 else 60 
     
