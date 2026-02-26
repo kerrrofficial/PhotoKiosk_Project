@@ -1896,20 +1896,6 @@ class KioskMain(QMainWindow):
             print(f"[인쇄 오류] {e}")
 
         self.show_page(6)
-        except Exception as e:
-            print(f"[인쇄 오류] {e}")
-
-        self.show_page(6)
-        
-        # --- 풀컷 인쇄 (기존 코드) ---
-        if not hasattr(self, 'final_print_path'): 
-            self.final_print_path = self.final_image_path
-        if self.session_data.get('use_qr', True): 
-            add_qr_to_image(self.final_print_path)
-        
-        self.last_printed_file = self.final_print_path
-        qty = self.session_data.get('print_qty', 1)
-        printer_name = self.admin_settings.get('printer_name', 'DS-RX1')
 
     def load_payment_page_logic(self):
         min_q = max(2, self.admin_settings.get('print_count_min', 2))
