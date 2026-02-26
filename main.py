@@ -2327,8 +2327,8 @@ class KioskMain(QMainWindow):
             
             self.cam_thread = VideoThread(
                 camera_index=camera_index,
-                target_width=640,
-                target_height=480
+                target_width=camera_w,
+                target_height=camera_h
             )
             self.cam_thread.change_pixmap_signal.connect(self.update_image)
             self.cam_thread.error_signal.connect(self.on_camera_error)
