@@ -2032,6 +2032,9 @@ class KioskMain(QMainWindow):
         all_frames = []
         for p_type, layouts in papers.items():
             for l_key, files in layouts.items():
+                # _ 로 시작하는 레이아웃은 비활성화
+                if l_key.startswith("_"):
+                    continue
                 d = os.path.join(self.asset_root, p_type, l_key)
                 if not os.path.exists(d): continue
                 if "*" in files:
