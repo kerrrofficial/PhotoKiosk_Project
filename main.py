@@ -2026,9 +2026,13 @@ class KioskMain(QMainWindow):
             for l_key, files in layouts.items():
                 # _ 로 시작하는 레이아웃은 비활성화
                 if l_key.startswith("_"):
+                    print(f"[프레임 스킵] {p_type}/{l_key}")
                     continue
                 d = os.path.join(self.asset_root, p_type, l_key)
-                if not os.path.exists(d): continue
+                if not os.path.exists(d):
+                    print(f"[프레임 폴더 없음] {d}")
+                    continue
+                print(f"[프레임 로드] {p_type}/{l_key}")
                 if "*" in files:
                     fs = sorted(glob.glob(os.path.join(d, "*.png")))
                 else:
