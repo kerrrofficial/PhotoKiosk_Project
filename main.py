@@ -1870,9 +1870,16 @@ class KioskMain(QMainWindow):
                 pw = pdc.GetDeviceCaps(110)  # HORZRES
                 ph = pdc.GetDeviceCaps(111)  # VERTRES
                 
-                # 3. 이미지 로드 및 프린터 해상도에 맞게 리사이즈
+                # 3. 이미지 로드
                 img = Image.open(self.final_print_path)
-                # PIL.Image.LANCZOS 또는 Resampling.LANCZOS 사용
+                print(f"[인쇄] 이미지 원본: {img.width} x {img.height}")
+                print(f"[인쇄] 프린터 출력영역: {pw} x {ph}")
+                
+                # 가로형 이미지(width > height)는 90도 회전 후 출력
+                if img.width > img.height:
+                    img = img.rotate(90, expand=True)
+                    print(f"[인쇄] 가로형 감지 → 90도 회전: {img.width} x {img.height}")
+                
                 img = img.resize((pw, ph), Image.Resampling.LANCZOS)
                 
                 # 4. 문서 시작 (인쇄 창 팝업 방지를 위해 문서 이름 지정)
