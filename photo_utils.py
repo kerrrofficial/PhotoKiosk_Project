@@ -130,7 +130,16 @@ def merge_4cut_vertical(image_paths, frame_path=None, layout_key="full_4cut"):
     """
     layout_key (예: 'full_v4a', 'half_v3')에 따라 사진을 배치하고 프레임을 합성
     """
-    CANVAS_W, CANVAS_H = 2400, 3600
+    # 가로형 레이아웃은 캔버스를 가로로 생성
+    horizontal_layouts = ['h2', 'h4', 'h5', 'h10']
+    is_horizontal = any(layout_key.endswith(h) for h in horizontal_layouts)
+    
+    if is_horizontal:
+        CANVAS_W, CANVAS_H = 3600, 2400
+    else:
+        CANVAS_W, CANVAS_H = 2400, 3600
+    
+    print(f"[photo_utils] 캔버스: {CANVAS_W}x{CANVAS_H} ({'가로형' if is_horizontal else '세로형'})")
     canvas = Image.new("RGB", (CANVAS_W, CANVAS_H), "white")
     
     # 레이아웃 정보 가져오기
