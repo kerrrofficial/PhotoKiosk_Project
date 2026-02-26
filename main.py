@@ -2223,21 +2223,11 @@ class KioskMain(QMainWindow):
         else:
             slot_ratio = 3 / 4  # 기본 비율
         
-        # 🔥 5. 화면을 프레임 비율에 맞게 영역 계산
-        screen_ratio = target_w / target_h
-        
-        if screen_ratio > slot_ratio:
-            # 화면이 더 넓음 -> 좌우 여백
-            display_h = target_h
-            display_w = int(display_h * slot_ratio)
-            display_x = (target_w - display_w) // 2
-            display_y = 0
-        else:
-            # 화면이 더 좁음 -> 위아래 여백
-            display_w = target_w
-            display_h = int(display_w / slot_ratio)
-            display_x = 0
-            display_y = (target_h - display_h) // 2
+       # 카메라 프리뷰는 화면 전체를 꽉 채움
+        display_w = target_w
+        display_h = target_h
+        display_x = 0
+        display_y = 0
         
         # 🔥 6. 캔버스 생성 및 카메라 영상 배치
         final_pixmap = QPixmap(target_w, target_h)
