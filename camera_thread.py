@@ -61,7 +61,15 @@ class VideoThread(QThread):
             ret, cv_img = cap.read()
             
             if not ret:
-                print(f"⚠️ 프레임 읽기 실패 (frame #{frame_count})")
+                print(f"⚠️ 프레임 읽기 실패 (frame #{frame_count}) - 재연결 시도")
+                cap.release()
+                self.msleep(2000)  # 2초 대기
+                if platform.system() == 'Windows':
+                    cap = cv2.VideoCapture(self.camera_index, cv2.CAP_DSHOW)
+                else:
+                    cap = cv2.VideoCapture(self.camera_index)
+                cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.target_width)
+                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.target_height)
                 continue
             
             # 1. BGR -> RGB 변환
