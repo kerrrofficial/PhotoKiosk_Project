@@ -34,6 +34,7 @@ from photo_utils import merge_4cut_vertical, merge_half_cut, apply_filter, add_q
 from widgets import ClickableLabel, BackArrowWidget, CircleButton, GradientButton, QRCheckWidget, GlobalTimerWidget, PaymentPopup
 from constants import LAYOUT_OPTIONS_MASTER, LAYOUT_SLOT_COUNT
 from tether_service import capture_one_photo_blocking
+from shutter_trigger import EOSRemoteShutter
 from tether_worker import TetherCaptureManyThread
 
 class PaymentApproveThread(QThread):
@@ -2812,23 +2813,51 @@ class KioskMain(QMainWindow):
             self.countdown_val -= 1
 
     def take_photo(self):
-        """현재 프레임 저장"""
-        if not hasattr(self, 'current_frame_data') or self.current_frame_data is None:
-            print("⚠️ 카메라 데이터가 아직 없습니다. 재시도합니다.")
-            QTimer.singleShot(500, self.prepare_next_shot)
-            return
+        """EOS Utility 셔터 트리거 → tether_service 파일 감지 → 저장"""
+        import threading, shutil
+        from shutter_trigger import EOSRemoteShutter
+        from tether_service import capture_one_photo_blocking
 
-        # 1. 저장 경로 설정
-        save_dir = os.path.join("data", "original")
-        os.makedirs(save_dir, exist_ok=True)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"shot_{timestamp}_{self.current_shot_idx}.jpg"
-        filepath = os.path.join(save_dir, filename)
-        
-        # 2. 이미지 저장
-        self.current_frame_data.save(filepath)
+        def _fallback():
+            """EOS 실패 시 캡처보드 프레임으로 대체 저장"""
+            if hasattr(self, 'current_frame_data') and self.current_frame_data:
+                save_dir = os.path.join("data", "original")
+                os.makedirs(save_dir, exist_ok=True)
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filepath = os.path.join(save_dir, f"shot_{timestamp}_{self.current_shot_idx}.jpg")
+                self.current_frame_data.save(filepath, quality=95)
+                print(f"[Save] 폴백(캡처보드): {filepath}")
+                QTimer.singleShot(0, lambda p=filepath: self._on_photo_saved(p))
+
+        def _shoot():
+            # 1. EOS 셔터 트리거
+            shutter = EOSRemoteShutter()
+            if not shutter.trigger(wait_after=0.3):
+                print("⚠️ EOS 셔터 실패 - 폴백")
+                _fallback()
+                return
+
+            # 2. EOS가 저장한 파일 감지 (최대 10초)
+            result = capture_one_photo_blocking(capture_window_sec=10)
+            if result is None:
+                print("⚠️ EOS 파일 감지 실패 - 폴백")
+                _fallback()
+                return
+
+            # 3. data/original 로 복사
+            save_dir = os.path.join("data", "original")
+            os.makedirs(save_dir, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filepath = os.path.join(save_dir, f"shot_{timestamp}_{self.current_shot_idx}.jpg")
+            shutil.copy2(str(result), filepath)
+            print(f"[Save] EOS 고화질: {filepath}")
+            QTimer.singleShot(0, lambda p=filepath: self._on_photo_saved(p))
+
+        threading.Thread(target=_shoot, daemon=True).start()
+
+    def _on_photo_saved(self, filepath):
+        """파일 저장 완료 후 미리보기 업데이트 및 다음 컷 진행 (메인 스레드)"""
         self.captured_files.append(filepath)
-        print(f"[Save] {filepath}")
         
         # 🔥 3. 현재 컷의 프레임 구멍 비율 가져오기
         paper = self.session_data.get('paper_type', 'full')
@@ -2849,63 +2878,46 @@ class KioskMain(QMainWindow):
             pix = QPixmap(filepath)
             
             if slot_info and not pix.isNull():
-                # 🔥 구멍 비율 계산
                 hole_ratio = slot_info['w'] / slot_info['h']
-                
-                # 🔥 이미지를 구멍 비율로 크롭
                 img_w = pix.width()
                 img_h = pix.height()
                 img_ratio = img_w / img_h
                 
                 if img_ratio > hole_ratio:
-                    # 이미지가 더 넓음 -> 좌우 자르기
                     crop_h = img_h
                     crop_w = int(crop_h * hole_ratio)
                     crop_x = (img_w - crop_w) // 2
                     crop_y = 0
                 else:
-                    # 이미지가 더 좁음 -> 위아래 자르기
                     crop_w = img_w
                     crop_h = int(crop_w / hole_ratio)
                     crop_x = 0
                     crop_y = (img_h - crop_h) // 2
                 
-                # 크롭
                 cropped_pix = pix.copy(crop_x, crop_y, crop_w, crop_h)
-                
-                # 🔥 라벨 크기를 꽉 채우도록 스케일 (KeepAspectRatioByExpanding)
                 lbl.setScaledContents(False)
                 scaled = cropped_pix.scaled(
-                    lbl.width(), 
-                    lbl.height(),
-                    Qt.AspectRatioMode.KeepAspectRatioByExpanding,  # 🔥 영역을 꽉 채움
-                    Qt.TransformationMode.SmoothTransformation
-                )
-                
-                # 🔥 넘치는 부분은 중앙 크롭
-                if scaled.width() > lbl.width() or scaled.height() > lbl.height():
-                    final_x = (scaled.width() - lbl.width()) // 2
-                    final_y = (scaled.height() - lbl.height()) // 2
-                    final_pix = scaled.copy(final_x, final_y, lbl.width(), lbl.height())
-                    lbl.setPixmap(final_pix)
-                else:
-                    lbl.setPixmap(scaled)
-                
-                print(f"[DEBUG] 미리보기 {preview_idx}: 라벨크기 {lbl.width()}x{lbl.height()}")
-            else:
-                # 구멍 정보 없으면 기본 표시 (꽉 채우기)
-                lbl.setScaledContents(False)
-                scaled = pix.scaled(
-                    lbl.width(),
-                    lbl.height(),
+                    lbl.width(), lbl.height(),
                     Qt.AspectRatioMode.KeepAspectRatioByExpanding,
                     Qt.TransformationMode.SmoothTransformation
                 )
                 if scaled.width() > lbl.width() or scaled.height() > lbl.height():
                     final_x = (scaled.width() - lbl.width()) // 2
                     final_y = (scaled.height() - lbl.height()) // 2
-                    final_pix = scaled.copy(final_x, final_y, lbl.width(), lbl.height())
-                    lbl.setPixmap(final_pix)
+                    lbl.setPixmap(scaled.copy(final_x, final_y, lbl.width(), lbl.height()))
+                else:
+                    lbl.setPixmap(scaled)
+            else:
+                lbl.setScaledContents(False)
+                scaled = pix.scaled(
+                    lbl.width(), lbl.height(),
+                    Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                    Qt.TransformationMode.SmoothTransformation
+                )
+                if scaled.width() > lbl.width() or scaled.height() > lbl.height():
+                    final_x = (scaled.width() - lbl.width()) // 2
+                    final_y = (scaled.height() - lbl.height()) // 2
+                    lbl.setPixmap(scaled.copy(final_x, final_y, lbl.width(), lbl.height()))
                 else:
                     lbl.setPixmap(scaled)
 
