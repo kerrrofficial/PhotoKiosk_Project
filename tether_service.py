@@ -17,6 +17,7 @@ def _list_media_files(folder: Path):
 
 def _wait_for_new_files_by_name(window_sec: int):
     before = {f.name for f in _list_media_files(WATCH_DIR)}
+    print(f"[tether_service] 감시 시작 - 기존 파일 {len(before)}개: {sorted(before)[-3:] if before else '없음'}")
     end_time = time.time() + window_sec
     collected = []
     seen = set()
