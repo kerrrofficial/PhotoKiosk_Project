@@ -51,6 +51,7 @@ class PaymentApproveThread(QThread):
 
 
 class KioskMain(QMainWindow):
+    _photo_ready_signal = pyqtSignal(str)
 
     def get_admin_shoot_count(self) -> int:
         # 하프컷은 슬롯 수 기준, 풀컷은 어드민 설정 기준
@@ -69,6 +70,8 @@ class KioskMain(QMainWindow):
     
     def __init__(self):
         from constants import DEFAULT_SHOOT_COUNT, MAX_SHOOT_COUNT
+        super().__init__()
+        self._photo_ready_signal.connect(self._on_photo_saved)
 
         super().__init__()
 
@@ -2851,7 +2854,7 @@ class KioskMain(QMainWindow):
             filepath = os.path.join(save_dir, f"shot_{timestamp}_{self.current_shot_idx}.jpg")
             shutil.copy2(str(result), filepath)
             print(f"[Save] EOS 고화질: {filepath}")
-            QTimer.singleShot(0, lambda p=filepath: self._on_photo_saved(p))
+            self._photo_ready_signal.emit(filepath)
 
         threading.Thread(target=_shoot, daemon=True).start()
 
