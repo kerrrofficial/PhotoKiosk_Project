@@ -73,8 +73,6 @@ class KioskMain(QMainWindow):
         super().__init__()
         self._photo_ready_signal.connect(self._on_photo_saved)
 
-        super().__init__()
-
         # 🔥 폰트 로딩 (가장 먼저!)
         self.base_path = os.path.dirname(os.path.abspath(__file__))
         self.load_custom_fonts()       # 폰트 로드
