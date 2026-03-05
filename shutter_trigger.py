@@ -103,9 +103,31 @@ class EOSRemoteShutter:
             print(f"[EOS] ✅ 창 찾음!")
             self.activate_window(hwnd)
         
-        # 3. Space 키 전송
+        # 3. Space 키 전송 후 즉시 키오스크 창으로 포커스 복귀
         print("[EOS] 📸 셔터 트리거!")
         pyautogui.press('space')
+        time.sleep(0.1)
+        # 키오스크 창 찾아서 포그라운드로 복귀
+        kiosk_titles = ["PhotoKiosk", "Kiosk", "aurapic", "키오스크"]
+        for title in kiosk_titles:
+            hwnd = win32gui.FindWindow(None, title)
+            if not hwnd:
+                # 부분 일치로 찾기
+                def enum_callback(h, results):
+                    if win32gui.IsWindowVisible(h):
+                        t = win32gui.GetWindowText(h)
+                        if title.lower() in t.lower():
+                            results.append(h)
+                results = []
+                win32gui.EnumWindows(enum_callback, results)
+                if results:
+                    hwnd = results[0]
+            if hwnd:
+                try:
+                    win32gui.SetForegroundWindow(hwnd)
+                except:
+                    pass
+                break
         
         # 4. 대기
         time.sleep(wait_after)

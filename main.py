@@ -2858,6 +2858,60 @@ class KioskMain(QMainWindow):
     def _on_photo_saved(self, filepath):
         """파일 저장 완료 후 미리보기 업데이트 및 다음 컷 진행 (메인 스레드)"""
         self.captured_files.append(filepath)
+
+        # 현재 컷의 프레임 구멍 비율 가져오기
+        paper = self.session_data.get('paper_type', 'full')
+        layout = self.session_data.get('layout_key', 'v2')
+        key = f"{paper}_{layout}"
+        layout_list = FRAME_LAYOUTS.get(key, [])
+        slot_idx = (self.current_shot_idx - 1) % len(layout_list) if layout_list else 0
+        slot_info = layout_list[slot_idx] if layout_list else None
+
+        # 사이드바 미리보기 업데이트
+        all_previews = self.left_previews + self.right_previews
+        preview_idx = self.current_shot_idx - 1
+
+        if preview_idx < len(all_previews):
+            lbl = all_previews[preview_idx]
+            pix = QPixmap(filepath)
+
+            if slot_info and not pix.isNull():
+                hole_ratio = slot_info['w'] / slot_info['h']
+                img_w, img_h = pix.width(), pix.height()
+                img_ratio = img_w / img_h
+                if img_ratio > hole_ratio:
+                    crop_h = img_h
+                    crop_w = int(crop_h * hole_ratio)
+                    crop_x = (img_w - crop_w) // 2
+                    crop_y = 0
+                else:
+                    crop_w = img_w
+                    crop_h = int(crop_w / hole_ratio)
+                    crop_x = 0
+                    crop_y = (img_h - crop_h) // 2
+                cropped_pix = pix.copy(crop_x, crop_y, crop_w, crop_h)
+                lbl.setScaledContents(False)
+                scaled = cropped_pix.scaled(lbl.width(), lbl.height(),
+                    Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                    Qt.TransformationMode.SmoothTransformation)
+                if scaled.width() > lbl.width() or scaled.height() > lbl.height():
+                    fx = (scaled.width() - lbl.width()) // 2
+                    fy = (scaled.height() - lbl.height()) // 2
+                    lbl.setPixmap(scaled.copy(fx, fy, lbl.width(), lbl.height()))
+                else:
+                    lbl.setPixmap(scaled)
+            else:
+                lbl.setScaledContents(True)
+                lbl.setPixmap(QPixmap(filepath))
+
+        # 다음 컷으로 진행
+        self.current_shot_idx += 1
+        self.current_countdown_display = 0
+        QTimer.singleShot(1000, self.prepare_next_shot)
+
+    def _on_photo_saved(self, filepath):
+        """파일 저장 완료 후 미리보기 업데이트 및 다음 컷 진행 (메인 스레드)"""
+        self.captured_files.append(filepath)
         
         # 🔥 3. 현재 컷의 프레임 구멍 비율 가져오기
         paper = self.session_data.get('paper_type', 'full')
