@@ -2831,6 +2831,12 @@ class KioskMain(QMainWindow):
                 QTimer.singleShot(0, lambda p=filepath: self._on_photo_saved(p))
 
         def _shoot():
+            # 0. 셔터 전 스냅샷 미리 찍기
+            from pathlib import Path
+            watch_dir = Path("incoming_photos")
+            pre_snapshot = {f.name for f in watch_dir.iterdir() if f.is_file()} if watch_dir.exists() else set()
+            print(f"[take_photo] 사전 스냅샷: {len(pre_snapshot)}개")
+
             # 1. EOS 셔터 트리거
             shutter = EOSRemoteShutter()
             if not shutter.trigger(wait_after=0.3):
@@ -2839,7 +2845,7 @@ class KioskMain(QMainWindow):
                 return
 
             # 2. EOS가 저장한 파일 감지 (최대 10초)
-            result = capture_one_photo_blocking(capture_window_sec=10)
+            result = capture_one_photo_blocking(capture_window_sec=10, pre_snapshot=pre_snapshot)
             if result is None:
                 print("⚠️ EOS 파일 감지 실패 - 폴백")
                 _fallback()

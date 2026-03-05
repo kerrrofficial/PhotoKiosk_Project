@@ -16,7 +16,7 @@ def _list_media_files(folder: Path):
     )
 
 def _wait_for_new_files_by_name(window_sec: int):
-    before = {f.name for f in _list_media_files(WATCH_DIR)}
+    before = pre_snapshot if pre_snapshot is not None else {f.name for f in _list_media_files(WATCH_DIR)}
     print(f"[tether_service] 감시 시작 - 기존 파일 {len(before)}개: {sorted(before)[-3:] if before else '없음'}")
     end_time = time.time() + window_sec
     collected = []
@@ -52,7 +52,7 @@ def _pick_best_one(files):
         return None
     return max(files, key=lambda f: f.stat().st_size)
 
-def capture_one_photo_blocking(capture_window_sec: int = 15) -> Path | None:
+def capture_one_photo_blocking(capture_window_sec: int = 15, pre_snapshot: set = None) -> Path | None:
     """
     '지금부터 capture_window_sec 동안 들어온 새 파일'을 감지해서
     가장 큰 파일 1장을 반환.
