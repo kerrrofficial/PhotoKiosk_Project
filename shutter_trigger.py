@@ -78,60 +78,29 @@ class EOSRemoteShutter:
             return False
     
     def trigger(self, wait_after: float = 0.5, auto_activate: bool = True) -> bool:
-        """
-        촬영 트리거 (Space 키 전송)
-        
-        Args:
-            wait_after: 촬영 후 대기 시간 (초)
-            auto_activate: 자동으로 창 활성화 여부
-            
-        Returns:
-            성공 여부
-        """
-        # 1. EOS Utility 창 찾기 (auto_activate=True일 때만)
         if auto_activate:
             hwnd = self.find_eos_window()
-            
             if hwnd is None:
-                print("[EOS] ❌ EOS Utility 창을 찾을 수 없습니다.")
-                print("[EOS] 확인사항:")
-                print("  1. EOS Utility가 실행되어 있나요?")
-                print("  2. '원격 라이브 뷰 창'이 열려있나요?")
                 return False
-            
-            # 2. 창 활성화
-            print(f"[EOS] ✅ 창 찾음!")
-            self.activate_window(hwnd)
-        
-        # 3. Space 키 전송 후 즉시 키오스크 창으로 포커스 복귀
+
         print("[EOS] 📸 셔터 트리거!")
-        pyautogui.press('space')
-        time.sleep(0.1)
-        # 키오스크 창 찾아서 포그라운드로 복귀
-        kiosk_titles = ["PhotoKiosk", "Kiosk", "aurapic", "키오스크"]
-        for title in kiosk_titles:
-            hwnd = win32gui.FindWindow(None, title)
-            if not hwnd:
-                # 부분 일치로 찾기
-                def enum_callback(h, results):
-                    if win32gui.IsWindowVisible(h):
-                        t = win32gui.GetWindowText(h)
-                        if title.lower() in t.lower():
-                            results.append(h)
-                results = []
-                win32gui.EnumWindows(enum_callback, results)
-                if results:
-                    hwnd = results[0]
-            if hwnd:
-                try:
-                    win32gui.SetForegroundWindow(hwnd)
-                except:
-                    pass
-                break
         
-        # 4. 대기
+        # 백그라운드로 스페이스바 전송 (창 활성화 없이)
+        VK_SPACE = 0x20
+        WM_KEYDOWN = 0x0100
+        WM_KEYUP = 0x0101
+        
+        try:
+            win32gui.PostMessage(hwnd, WM_KEYDOWN, VK_SPACE, 0)
+            time.sleep(0.05)
+            win32gui.PostMessage(hwnd, WM_KEYUP, VK_SPACE, 0)
+        except Exception as e:
+            print(f"[EOS] 백그라운드 키 전송 실패: {e}")
+            # 폴백: 기존 방식
+            self.activate_window(hwnd)
+            pyautogui.press('space')
+
         time.sleep(wait_after)
-        
         return True
     
     def check_connection(self) -> bool:
