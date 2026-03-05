@@ -96,6 +96,7 @@ class KioskMain(QMainWindow):
         self.admin_settings = {
             'print_qty': 1, 'shot_countdown': 3, 'total_shoot_count': 8,
             'mirror_mode': True, 'printer_name': 'DS-RX1',
+            'save_raw_files': True,
             'use_qr': True, 
             'payment_mode': 1, # 0:무상, 1:유상, 2:코인
             'use_card': True, 'use_cash': True, 'use_coupon': True,
