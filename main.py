@@ -2828,7 +2828,7 @@ class KioskMain(QMainWindow):
                 filepath = os.path.join(save_dir, f"shot_{timestamp}_{self.current_shot_idx}.jpg")
                 self.current_frame_data.save(filepath, quality=95)
                 print(f"[Save] 폴백(캡처보드): {filepath}")
-                QTimer.singleShot(0, lambda p=filepath: self._on_photo_saved(p))
+                self._photo_ready_signal.emit(filepath)
 
         def _shoot():
             # 0. 셔터 전 스냅샷 미리 찍기
