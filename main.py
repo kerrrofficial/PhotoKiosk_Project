@@ -2940,8 +2940,9 @@ class KioskMain(QMainWindow):
         cy = (scaled.height() - vh) // 2
         self._frozen_pixmap = scaled.copy(cx, cy, vw, vh)
 
+        # 카메라 시그널 중단 (라이브뷰 정지)
         try:
-            self.cam_thread.change_pixmap_signal.connect(self.update_image)
+            self.cam_thread.change_pixmap_signal.disconnect(self.update_image)
         except:
             pass
 
