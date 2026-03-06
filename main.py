@@ -2830,6 +2830,8 @@ class KioskMain(QMainWindow):
                 self.current_frame_data.save(filepath, quality=95)
                 print(f"[Save] 폴백(캡처보드): {filepath}")
                 self._photo_ready_signal.emit(filepath)
+         
+        self._start_shutter_animation()    
 
         def _shoot():
             # 0. 셔터 전 스냅샷 미리 찍기
@@ -2916,6 +2918,75 @@ class KioskMain(QMainWindow):
         self.current_shot_idx += 1
         self.current_countdown_display = 0
         QTimer.singleShot(1000, self.prepare_next_shot)
+
+    def _start_shutter_animation(self):
+        if not hasattr(self, 'current_frame_data') or not self.current_frame_data:
+            return
+
+        vw = self.video_label.width()
+        vh = self.video_label.height()
+
+        frozen = QPixmap.fromImage(self.current_frame_data)
+        scaled = frozen.scaled(vw, vh,
+            Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+            Qt.TransformationMode.SmoothTransformation)
+        cx = (scaled.width() - vw) // 2
+        cy = (scaled.height() - vh) // 2
+        self._frozen_pixmap = scaled.copy(cx, cy, vw, vh)
+
+        try:
+            self.cam_thread.change_pixmap_signal.disconnect(self.update_image)
+        except:
+            pass
+
+        self.video_label.clear()
+
+        self._anim_label = QLabel(self.video_label.parent())
+        self._anim_label.setScaledContents(True)
+        self._anim_label.setPixmap(self._frozen_pixmap)
+        self._anim_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._anim_label.raise_()
+
+        vpos = self.video_label.mapTo(self.video_label.parent(), self.video_label.rect().topLeft())
+        self._anim_vx = vpos.x()
+        self._anim_vy = vpos.y()
+        self._anim_vw = vw
+        self._anim_vh = vh
+
+        start_scale = 0.1
+        sw = int(vw * start_scale)
+        sh = int(vh * start_scale)
+        sx = self._anim_vx + (vw - sw) // 2
+        sy = self._anim_vy + (vh - sh) // 2
+        self._anim_label.setGeometry(sx, sy, sw, sh)
+        self._anim_label.show()
+
+        self._anim_scale = start_scale
+        self._anim_timer = QTimer()
+        self._anim_timer.timeout.connect(self._animate_expand)
+        self._anim_timer.start(16)
+
+    def _animate_expand(self):
+        self._anim_scale += 0.06
+
+        if self._anim_scale >= 1.0:
+            self._anim_scale = 1.0
+            self._anim_timer.stop()
+            self._anim_label.deleteLater()
+            self._anim_label = None
+            try:
+                self.cam_thread.change_pixmap_signal.connect(self.update_image)
+            except:
+                pass
+            return
+
+        vw = self._anim_vw
+        vh = self._anim_vh
+        new_w = int(vw * self._anim_scale)
+        new_h = int(vh * self._anim_scale)
+        x = self._anim_vx + (vw - new_w) // 2
+        y = self._anim_vy + (vh - new_h) // 2
+        self._anim_label.setGeometry(x, y, new_w, new_h)
 
     def _on_photo_saved(self, filepath):
         """파일 저장 완료 후 미리보기 업데이트 및 다음 컷 진행 (메인 스레드)"""
