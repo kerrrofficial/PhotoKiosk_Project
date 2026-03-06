@@ -34,7 +34,7 @@ def _wait_for_new_files_by_name(window_sec: int, pre_snapshot: set = None):
             if size1 <= 0:
                 continue
 
-            time.sleep(0.3)
+            time.sleep(1)
             try:
                 size2 = f.stat().st_size
             except FileNotFoundError:
