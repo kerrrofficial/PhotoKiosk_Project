@@ -2810,7 +2810,7 @@ class KioskMain(QMainWindow):
 
         if self.countdown_val <= 0:
             self.shooting_timer.stop()
-            self.take_photo() # 촬영!
+            self._start_shutter_animation()
         else:
             self.countdown_val -= 1
 
@@ -2829,9 +2829,7 @@ class KioskMain(QMainWindow):
                 filepath = os.path.join(save_dir, f"shot_{timestamp}_{self.current_shot_idx}.jpg")
                 self.current_frame_data.save(filepath, quality=95)
                 print(f"[Save] 폴백(캡처보드): {filepath}")
-                self._photo_ready_signal.emit(filepath)
-         
-        self._start_shutter_animation()    
+                self._photo_ready_signal.emit(filepath) 
 
         def _shoot():
             # 0. 셔터 전 스냅샷 미리 찍기
@@ -2967,13 +2965,13 @@ class KioskMain(QMainWindow):
         self._anim_timer.start(16)  # 60fps, 약 3.5초 (0.008 * 60fps = 0.48%/frame → 100%까지 약 210프레임 = 3.5초)
 
     def _animate_expand(self):
-        self._anim_scale += 0.003
+        self._anim_scale += 0.006
 
         if self._anim_scale >= 1.0:
             self._anim_scale = 1.0
             self._anim_timer.stop()
             # 1초 고정 후 라이브뷰 재개
-            QTimer.singleShot(1000, self._finish_shutter_animation)
+            QTimer.singleShot(2000, self._finish_shutter_animation)
             return
 
         vw = self._anim_vw
@@ -2992,7 +2990,8 @@ class KioskMain(QMainWindow):
             self.cam_thread.change_pixmap_signal.connect(self.update_image)
         except:
             pass
-        
+        self.take_photo()  # 애니메이션 완료 후 실제 촬영
+
     def _on_photo_saved(self, filepath):
         """파일 저장 완료 후 미리보기 업데이트 및 다음 컷 진행 (메인 스레드)"""
         self.captured_files.append(filepath)
