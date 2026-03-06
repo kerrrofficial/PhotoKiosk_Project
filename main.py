@@ -2919,15 +2919,27 @@ class KioskMain(QMainWindow):
         QTimer.singleShot(1000, self.prepare_next_shot)
 
     def _start_shutter_animation(self):
-        # 이전 애니메이션 정리
+        """셔터 애니메이션: 라이브뷰 숨김 → 프레임 작게 등장 → 확대 → 라이브뷰 재개"""
         if hasattr(self, '_anim_timer') and self._anim_timer:
             self._anim_timer.stop()
+            self._anim_timer = None
         if hasattr(self, '_anim_label') and self._anim_label:
-            self._anim_label.deleteLater()
+            try:
+                self._anim_label.deleteLater()
+            except:
+                pass
             self._anim_label = None
 
         if not hasattr(self, 'current_frame_data') or not self.current_frame_data:
             return
+
+        try:
+            self.cam_thread.change_pixmap_signal.disconnect(self.update_image)
+        except:
+            pass
+
+        self.video_label.clear()
+        self.video_label.repaint()
 
         vw = self.video_label.width()
         vh = self.video_label.height()
@@ -2940,49 +2952,29 @@ class KioskMain(QMainWindow):
         cy = (scaled.height() - vh) // 2
         self._frozen_pixmap = scaled.copy(cx, cy, vw, vh)
 
-        # 카메라 시그널 중단 (라이브뷰 정지)
-        try:
-            self.cam_thread.change_pixmap_signal.disconnect(self.update_image)
-        except:
-            pass
-
-        self.video_label.clear()
+        vpos = self.video_label.mapToGlobal(self.video_label.rect().topLeft())
+        parent_pos = self.video_label.parent().mapToGlobal(self.video_label.parent().rect().topLeft())
+        self._anim_vx = vpos.x() - parent_pos.x()
+        self._anim_vy = vpos.y() - parent_pos.y()
+        self._anim_vw = vw
+        self._anim_vh = vh
 
         self._anim_label = QLabel(self.video_label.parent())
         self._anim_label.setScaledContents(True)
         self._anim_label.setPixmap(self._frozen_pixmap)
         self._anim_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._anim_label.setStyleSheet("background: transparent;")
+
+        self._anim_scale = 0.1
+        self._update_anim_geometry()
+        self._anim_label.show()
         self._anim_label.raise_()
 
-        vpos = self.video_label.mapTo(self.video_label.parent(), self.video_label.rect().topLeft())
-        self._anim_vx = vpos.x()
-        self._anim_vy = vpos.y()
-        self._anim_vw = vw
-        self._anim_vh = vh
-
-        start_scale = 0.1
-        sw = int(vw * start_scale)
-        sh = int(vh * start_scale)
-        sx = self._anim_vx + (vw - sw) // 2
-        sy = self._anim_vy + (vh - sh) // 2
-        self._anim_label.setGeometry(sx, sy, sw, sh)
-        self._anim_label.show()
-
-        self._anim_scale = start_scale
-        self._anim_timer = QTimer()
+        self._anim_timer = QTimer(self)
         self._anim_timer.timeout.connect(self._animate_expand)
-        self._anim_timer.start(16)  # 60fps, 약 3.5초 (0.008 * 60fps = 0.48%/frame → 100%까지 약 210프레임 = 3.5초)
+        self._anim_timer.start(16)
 
-    def _animate_expand(self):
-        self._anim_scale += 0.006
-
-        if self._anim_scale >= 1.0:
-            self._anim_scale = 1.0
-            self._anim_timer.stop()
-            # 1초 고정 후 라이브뷰 재개
-            QTimer.singleShot(2000, self._finish_shutter_animation)
-            return
-
+    def _update_anim_geometry(self):
         vw = self._anim_vw
         vh = self._anim_vh
         new_w = int(vw * self._anim_scale)
@@ -2991,10 +2983,32 @@ class KioskMain(QMainWindow):
         y = self._anim_vy + (vh - new_h) // 2
         self._anim_label.setGeometry(x, y, new_w, new_h)
 
+    def _animate_expand(self):
+        if not hasattr(self, '_anim_label') or self._anim_label is None:
+            if hasattr(self, '_anim_timer') and self._anim_timer:
+                self._anim_timer.stop()
+            return
+
+        self._anim_scale += 0.006
+
+        if self._anim_scale >= 1.0:
+            self._anim_scale = 1.0
+            self._update_anim_geometry()
+            self._anim_timer.stop()
+            self._anim_timer = None
+            QTimer.singleShot(2000, self._finish_shutter_animation)
+            return
+
+        self._update_anim_geometry()
+
     def _finish_shutter_animation(self):
         if hasattr(self, '_anim_label') and self._anim_label:
-            self._anim_label.deleteLater()
+            try:
+                self._anim_label.deleteLater()
+            except:
+                pass
             self._anim_label = None
+
         try:
             self.cam_thread.change_pixmap_signal.connect(self.update_image)
         except:
@@ -3066,10 +3080,17 @@ class KioskMain(QMainWindow):
                 else:
                     lbl.setPixmap(scaled)
 
-        # 5. 다음 컷으로 진행
+        # 5. 다음 컷으로 진행 (애니메이션 완료 후)
         self.current_shot_idx += 1
         self.current_countdown_display = 0
-        QTimer.singleShot(1000, self.prepare_next_shot)
+
+        def _wait_for_anim_then_next():
+            if hasattr(self, '_anim_label') and self._anim_label:
+                QTimer.singleShot(200, _wait_for_anim_then_next)
+            else:
+                QTimer.singleShot(500, self.prepare_next_shot)
+
+        _wait_for_anim_then_next()
 
 if __name__ == "__main__":
     # 🔥 PyQt6용 DPI 스케일링 정책 (윈도우 대응)
