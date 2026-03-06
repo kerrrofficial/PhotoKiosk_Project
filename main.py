@@ -2919,6 +2919,13 @@ class KioskMain(QMainWindow):
         QTimer.singleShot(1000, self.prepare_next_shot)
 
     def _start_shutter_animation(self):
+        # 이전 애니메이션 정리
+        if hasattr(self, '_anim_timer') and self._anim_timer:
+            self._anim_timer.stop()
+        if hasattr(self, '_anim_label') and self._anim_label:
+            self._anim_label.deleteLater()
+            self._anim_label = None
+
         if not hasattr(self, 'current_frame_data') or not self.current_frame_data:
             return
 
@@ -2991,7 +2998,6 @@ class KioskMain(QMainWindow):
             self.cam_thread.change_pixmap_signal.connect(self.update_image)
         except:
             pass
-        self.take_photo()  # 애니메이션 완료 후 실제 촬영
 
     def _on_photo_saved(self, filepath):
         """파일 저장 완료 후 미리보기 업데이트 및 다음 컷 진행 (메인 스레드)"""
