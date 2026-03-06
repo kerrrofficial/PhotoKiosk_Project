@@ -24,6 +24,7 @@ class EOSRemoteShutter:
     
     # EOS Utility 창 제목 (버전/언어에 따라 다를 수 있음)
     WINDOW_TITLES = [
+        " EOS R100",          # 메인 창 (앞에 공백 있음)
         "EOS R100",           # 메인 창
         "원격 라이브 뷰 창",   # 라이브 뷰 창 (한글)
         "Remote Live View",   # 라이브 뷰 창 (영문)
