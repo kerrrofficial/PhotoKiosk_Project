@@ -2811,6 +2811,7 @@ class KioskMain(QMainWindow):
         if self.countdown_val <= 0:
             self.shooting_timer.stop()
             self._start_shutter_animation()
+            self.take_photo()
         else:
             self.countdown_val -= 1
 
@@ -2933,7 +2934,7 @@ class KioskMain(QMainWindow):
         self._frozen_pixmap = scaled.copy(cx, cy, vw, vh)
 
         try:
-            self.cam_thread.change_pixmap_signal.disconnect(self.update_image)
+            self.cam_thread.change_pixmap_signal.connect(self.update_image)
         except:
             pass
 
