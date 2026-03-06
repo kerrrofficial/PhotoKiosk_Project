@@ -2964,10 +2964,10 @@ class KioskMain(QMainWindow):
         self._anim_scale = start_scale
         self._anim_timer = QTimer()
         self._anim_timer.timeout.connect(self._animate_expand)
-        self._anim_timer.start(16)
+        self._anim_timer.start(16)  # 60fps, 약 3.5초 (0.008 * 60fps = 0.48%/frame → 100%까지 약 210프레임 = 3.5초)
 
     def _animate_expand(self):
-        self._anim_scale += 0.06
+        self._anim_scale += 0.008
 
         if self._anim_scale >= 1.0:
             self._anim_scale = 1.0
