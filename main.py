@@ -2967,17 +2967,13 @@ class KioskMain(QMainWindow):
         self._anim_timer.start(16)  # 60fps, 약 3.5초 (0.008 * 60fps = 0.48%/frame → 100%까지 약 210프레임 = 3.5초)
 
     def _animate_expand(self):
-        self._anim_scale += 0.008
+        self._anim_scale += 0.003
 
         if self._anim_scale >= 1.0:
             self._anim_scale = 1.0
             self._anim_timer.stop()
-            self._anim_label.deleteLater()
-            self._anim_label = None
-            try:
-                self.cam_thread.change_pixmap_signal.connect(self.update_image)
-            except:
-                pass
+            # 1초 고정 후 라이브뷰 재개
+            QTimer.singleShot(1000, self._finish_shutter_animation)
             return
 
         vw = self._anim_vw
@@ -2988,6 +2984,15 @@ class KioskMain(QMainWindow):
         y = self._anim_vy + (vh - new_h) // 2
         self._anim_label.setGeometry(x, y, new_w, new_h)
 
+    def _finish_shutter_animation(self):
+        if hasattr(self, '_anim_label') and self._anim_label:
+            self._anim_label.deleteLater()
+            self._anim_label = None
+        try:
+            self.cam_thread.change_pixmap_signal.connect(self.update_image)
+        except:
+            pass
+        
     def _on_photo_saved(self, filepath):
         """파일 저장 완료 후 미리보기 업데이트 및 다음 컷 진행 (메인 스레드)"""
         self.captured_files.append(filepath)
