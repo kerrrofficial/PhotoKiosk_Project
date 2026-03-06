@@ -3009,6 +3009,13 @@ class KioskMain(QMainWindow):
                 pass
             self._anim_label = None
 
+        # video_label 크기 강제 복원
+        if hasattr(self, '_anim_vw') and hasattr(self, '_anim_vh'):
+            self.video_label.setMinimumSize(0, 0)
+            self.video_label.setMaximumSize(16777215, 16777215)
+            self.video_container.updateGeometry()
+            QApplication.processEvents()
+
         try:
             self.cam_thread.change_pixmap_signal.connect(self.update_image)
         except:
