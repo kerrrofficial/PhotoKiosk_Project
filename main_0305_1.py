@@ -51,7 +51,6 @@ class PaymentApproveThread(QThread):
 
 
 class KioskMain(QMainWindow):
-    _photo_ready_signal = pyqtSignal(str)
 
     def get_admin_shoot_count(self) -> int:
         # 하프컷은 슬롯 수 기준, 풀컷은 어드민 설정 기준
@@ -70,8 +69,8 @@ class KioskMain(QMainWindow):
     
     def __init__(self):
         from constants import DEFAULT_SHOOT_COUNT, MAX_SHOOT_COUNT
+
         super().__init__()
-        self._photo_ready_signal.connect(self._on_photo_saved)
 
         # 🔥 폰트 로딩 (가장 먼저!)
         self.base_path = os.path.dirname(os.path.abspath(__file__))
@@ -96,7 +95,6 @@ class KioskMain(QMainWindow):
         self.admin_settings = {
             'print_qty': 1, 'shot_countdown': 3, 'total_shoot_count': 8,
             'mirror_mode': True, 'printer_name': 'DS-RX1',
-            'save_raw_files': True,
             'use_qr': True, 
             'payment_mode': 1, # 0:무상, 1:유상, 2:코인
             'use_card': True, 'use_cash': True, 'use_coupon': True,
@@ -2226,17 +2224,11 @@ class KioskMain(QMainWindow):
         else:
             slot_ratio = 3 / 4  # 기본 비율
         
-       # 프레임 구멍 비율에 맞춰 라이브뷰 영역 계산 (중앙 배치)
-        if (target_w / target_h) > slot_ratio:
-            # 화면이 더 넓음 → 높이 기준
-            display_h = target_h
-            display_w = int(target_h * slot_ratio)
-        else:
-            # 화면이 더 높음 → 너비 기준
-            display_w = target_w
-            display_h = int(target_w / slot_ratio)
-        display_x = (target_w - display_w) // 2
-        display_y = (target_h - display_h) // 2
+       # 카메라 프리뷰는 화면 전체를 꽉 채움
+        display_w = target_w
+        display_h = target_h
+        display_x = 0
+        display_y = 0
         
         # 🔥 6. 캔버스 생성 및 카메라 영상 배치
         final_pixmap = QPixmap(target_w, target_h)
@@ -2816,8 +2808,7 @@ class KioskMain(QMainWindow):
 
         if self.countdown_val <= 0:
             self.shooting_timer.stop()
-            self._start_shutter_animation()
-            self.take_photo()
+            self.take_photo() # 촬영!
         else:
             self.countdown_val -= 1
 
@@ -2836,15 +2827,9 @@ class KioskMain(QMainWindow):
                 filepath = os.path.join(save_dir, f"shot_{timestamp}_{self.current_shot_idx}.jpg")
                 self.current_frame_data.save(filepath, quality=95)
                 print(f"[Save] 폴백(캡처보드): {filepath}")
-                self._photo_ready_signal.emit(filepath) 
+                QTimer.singleShot(0, lambda p=filepath: self._on_photo_saved(p))
 
         def _shoot():
-            # 0. 셔터 전 스냅샷 미리 찍기
-            from pathlib import Path
-            watch_dir = Path("incoming_photos")
-            pre_snapshot = {f.name for f in watch_dir.iterdir() if f.is_file()} if watch_dir.exists() else set()
-            print(f"[take_photo] 사전 스냅샷: {len(pre_snapshot)}개")
-
             # 1. EOS 셔터 트리거
             shutter = EOSRemoteShutter()
             if not shutter.trigger(wait_after=0.3):
@@ -2853,7 +2838,7 @@ class KioskMain(QMainWindow):
                 return
 
             # 2. EOS가 저장한 파일 감지 (최대 10초)
-            result = capture_one_photo_blocking(capture_window_sec=10, pre_snapshot=pre_snapshot)
+            result = capture_one_photo_blocking(capture_window_sec=10)
             if result is None:
                 print("⚠️ EOS 파일 감지 실패 - 폴백")
                 _fallback()
@@ -2866,7 +2851,7 @@ class KioskMain(QMainWindow):
             filepath = os.path.join(save_dir, f"shot_{timestamp}_{self.current_shot_idx}.jpg")
             shutil.copy2(str(result), filepath)
             print(f"[Save] EOS 고화질: {filepath}")
-            self._photo_ready_signal.emit(filepath)
+            QTimer.singleShot(0, lambda p=filepath: self._on_photo_saved(p))
 
         threading.Thread(target=_shoot, daemon=True).start()
 
@@ -2923,114 +2908,6 @@ class KioskMain(QMainWindow):
         self.current_shot_idx += 1
         self.current_countdown_display = 0
         QTimer.singleShot(1000, self.prepare_next_shot)
-
-    def _start_shutter_animation(self):
-        """셔터 애니메이션: 라이브뷰 숨김 → 프레임 작게 등장 → 확대 → 라이브뷰 재개"""
-        if hasattr(self, '_anim_timer') and self._anim_timer:
-            self._anim_timer.stop()
-            self._anim_timer = None
-        if hasattr(self, '_anim_label') and self._anim_label:
-            try:
-                self._anim_label.deleteLater()
-            except:
-                pass
-            self._anim_label = None
-
-        if not hasattr(self, 'current_frame_data') or not self.current_frame_data:
-            return
-
-        try:
-            self.cam_thread.change_pixmap_signal.disconnect(self.update_image)
-        except:
-            pass
-
-        # 라이브뷰 숨김 → 배경 노출 (크기 고정 후 clear)
-        vw = self.video_label.width()
-        vh = self.video_label.height()
-        self.video_label.setFixedSize(vw, vh)  # 크기 고정
-        self.video_label.clear()
-        self.video_label.repaint()
-
-        frozen = QPixmap.fromImage(self.current_frame_data)
-        scaled = frozen.scaled(vw, vh,
-            Qt.AspectRatioMode.KeepAspectRatioByExpanding,
-            Qt.TransformationMode.SmoothTransformation)
-        cx = (scaled.width() - vw) // 2
-        cy = (scaled.height() - vh) // 2
-        self._frozen_pixmap = scaled.copy(cx, cy, vw, vh)
-
-        vpos = self.video_label.mapToGlobal(self.video_label.rect().topLeft())
-        parent_pos = self.video_label.parent().mapToGlobal(self.video_label.parent().rect().topLeft())
-        self._anim_vx = vpos.x() - parent_pos.x()
-        self._anim_vy = vpos.y() - parent_pos.y()
-        self._anim_vw = vw
-        self._anim_vh = vh
-
-        self._anim_label = QLabel(self.video_label.parent())
-        self._anim_label.setScaledContents(True)
-        self._anim_label.setPixmap(self._frozen_pixmap)
-        self._anim_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-        self._anim_label.setStyleSheet("background: transparent;")
-
-        self._anim_scale = 0.1
-        self._update_anim_geometry()
-        self._anim_label.show()
-        self._anim_label.raise_()
-
-        self._anim_timer = QTimer(self)
-        self._anim_timer.timeout.connect(self._animate_expand)
-        self._anim_timer.start(16)
-
-    def _update_anim_geometry(self):
-        vw = self._anim_vw
-        vh = self._anim_vh
-        new_w = int(vw * self._anim_scale)
-        new_h = int(vh * self._anim_scale)
-        x = self._anim_vx + (vw - new_w) // 2
-        y = self._anim_vy + (vh - new_h) // 2
-        self._anim_label.setGeometry(x, y, new_w, new_h)
-
-    def _animate_expand(self):
-        if not hasattr(self, '_anim_label') or self._anim_label is None:
-            if hasattr(self, '_anim_timer') and self._anim_timer:
-                self._anim_timer.stop()
-            return
-
-        self._anim_scale += 0.006
-
-        if self._anim_scale >= 1.0:
-            self._anim_scale = 1.0
-            self._update_anim_geometry()
-            self._anim_timer.stop()
-            self._anim_timer = None
-            QTimer.singleShot(2000, self._finish_shutter_animation)
-            return
-
-        self._update_anim_geometry()
-
-    def _finish_shutter_animation(self):
-        if hasattr(self, '_anim_label') and self._anim_label:
-            try:
-                self._anim_label.deleteLater()
-            except:
-                pass
-            self._anim_label = None
-
-        # video_label 크기 강제 복원
-        if hasattr(self, '_anim_vw') and hasattr(self, '_anim_vh'):
-            self.video_label.setMinimumSize(0, 0)
-            self.video_label.setMaximumSize(16777215, 16777215)
-            self.video_container.updateGeometry()
-            QApplication.processEvents()
-
-        # video_label 크기 고정 해제 (원래 레이아웃으로 복원)
-        self.video_label.setMinimumSize(0, 0)
-        self.video_label.setMaximumSize(16777215, 16777215)
-
-        try:
-            self.cam_thread.change_pixmap_signal.connect(self.update_image)
-        except:
-            pass
 
     def _on_photo_saved(self, filepath):
         """파일 저장 완료 후 미리보기 업데이트 및 다음 컷 진행 (메인 스레드)"""
@@ -3098,17 +2975,10 @@ class KioskMain(QMainWindow):
                 else:
                     lbl.setPixmap(scaled)
 
-        # 5. 다음 컷으로 진행 (애니메이션 완료 후)
+        # 5. 다음 컷으로 진행
         self.current_shot_idx += 1
         self.current_countdown_display = 0
-
-        def _wait_for_anim_then_next():
-            if hasattr(self, '_anim_label') and self._anim_label:
-                QTimer.singleShot(200, _wait_for_anim_then_next)
-            else:
-                QTimer.singleShot(500, self.prepare_next_shot)
-
-        _wait_for_anim_then_next()
+        QTimer.singleShot(1000, self.prepare_next_shot)
 
 if __name__ == "__main__":
     # 🔥 PyQt6용 DPI 스케일링 정책 (윈도우 대응)
