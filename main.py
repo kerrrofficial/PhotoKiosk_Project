@@ -3011,10 +3011,12 @@ class KioskMain(QMainWindow):
     def _finish_shutter_animation(self):
         if hasattr(self, '_anim_label') and self._anim_label:
             try:
-                self._anim_label.deleteLater()
+                self.cam_thread.change_pixmap_signal.connect(self.update_image)
             except:
-                pass
-            self._anim_label = None
+              pass
+        
+        # 사진 저장이 이미 완료된 경우 즉시 다음 컷 진행
+        self._anim_finished = True
 
         # video_label 크기 강제 복원
         if hasattr(self, '_anim_vw') and hasattr(self, '_anim_vh'):
@@ -3106,7 +3108,7 @@ class KioskMain(QMainWindow):
             if hasattr(self, '_anim_label') and self._anim_label:
                 QTimer.singleShot(200, _wait_for_anim_then_next)
             else:
-                QTimer.singleShot(500, self.prepare_next_shot)
+                self.prepare_next_shot()
 
         _wait_for_anim_then_next()
 
