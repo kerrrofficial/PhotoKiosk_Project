@@ -2996,7 +2996,7 @@ class KioskMain(QMainWindow):
                 self._anim_timer.stop()
             return
 
-        self._anim_scale += 0.006
+        self._anim_scale += 0.009
 
         if self._anim_scale >= 1.0:
             self._anim_scale = 1.0
