@@ -96,7 +96,6 @@ class KioskMain(QMainWindow):
         self.admin_settings = {
             'print_qty': 1, 'shot_countdown': 3, 'total_shoot_count': 8,
             'mirror_mode': True, 'printer_name': 'DS-RX1',
-            'save_raw_files': True,
             'use_qr': True, 
             'payment_mode': 1, # 0:무상, 1:유상, 2:코인
             'use_card': True, 'use_cash': True, 'use_coupon': True,
@@ -2810,8 +2809,7 @@ class KioskMain(QMainWindow):
 
         if self.countdown_val <= 0:
             self.shooting_timer.stop()
-            self._start_shutter_animation()
-            self.take_photo()
+            self.take_photo() # 촬영!
         else:
             self.countdown_val -= 1
 
@@ -2830,7 +2828,7 @@ class KioskMain(QMainWindow):
                 filepath = os.path.join(save_dir, f"shot_{timestamp}_{self.current_shot_idx}.jpg")
                 self.current_frame_data.save(filepath, quality=95)
                 print(f"[Save] 폴백(캡처보드): {filepath}")
-                self._photo_ready_signal.emit(filepath) 
+                self._photo_ready_signal.emit(filepath)
 
         def _shoot():
             # 0. 셔터 전 스냅샷 미리 찍기
@@ -2918,114 +2916,6 @@ class KioskMain(QMainWindow):
         self.current_countdown_display = 0
         QTimer.singleShot(1000, self.prepare_next_shot)
 
-    def _start_shutter_animation(self):
-        """셔터 애니메이션: 라이브뷰 숨김 → 프레임 작게 등장 → 확대 → 라이브뷰 재개"""
-        if hasattr(self, '_anim_timer') and self._anim_timer:
-            self._anim_timer.stop()
-            self._anim_timer = None
-        if hasattr(self, '_anim_label') and self._anim_label:
-            try:
-                self._anim_label.deleteLater()
-            except:
-                pass
-            self._anim_label = None
-
-        if not hasattr(self, 'current_frame_data') or not self.current_frame_data:
-            return
-
-        try:
-            self.cam_thread.change_pixmap_signal.disconnect(self.update_image)
-        except:
-            pass
-
-        # 라이브뷰 숨김 → 배경 노출 (크기 고정 후 clear)
-        vw = self.video_label.width()
-        vh = self.video_label.height()
-        self.video_label.setFixedSize(vw, vh)  # 크기 고정
-        self.video_label.clear()
-        self.video_label.repaint()
-
-        frozen = QPixmap.fromImage(self.current_frame_data)
-        scaled = frozen.scaled(vw, vh,
-            Qt.AspectRatioMode.KeepAspectRatioByExpanding,
-            Qt.TransformationMode.SmoothTransformation)
-        cx = (scaled.width() - vw) // 2
-        cy = (scaled.height() - vh) // 2
-        self._frozen_pixmap = scaled.copy(cx, cy, vw, vh)
-
-        vpos = self.video_label.mapToGlobal(self.video_label.rect().topLeft())
-        parent_pos = self.video_label.parent().mapToGlobal(self.video_label.parent().rect().topLeft())
-        self._anim_vx = vpos.x() - parent_pos.x()
-        self._anim_vy = vpos.y() - parent_pos.y()
-        self._anim_vw = vw
-        self._anim_vh = vh
-
-        self._anim_label = QLabel(self.video_label.parent())
-        self._anim_label.setScaledContents(True)
-        self._anim_label.setPixmap(self._frozen_pixmap)
-        self._anim_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-        self._anim_label.setStyleSheet("background: transparent;")
-
-        self._anim_scale = 0.1
-        self._update_anim_geometry()
-        self._anim_label.show()
-        self._anim_label.raise_()
-
-        self._anim_timer = QTimer(self)
-        self._anim_timer.timeout.connect(self._animate_expand)
-        self._anim_timer.start(16)
-
-    def _update_anim_geometry(self):
-        vw = self._anim_vw
-        vh = self._anim_vh
-        new_w = int(vw * self._anim_scale)
-        new_h = int(vh * self._anim_scale)
-        x = self._anim_vx + (vw - new_w) // 2
-        y = self._anim_vy + (vh - new_h) // 2
-        self._anim_label.setGeometry(x, y, new_w, new_h)
-
-    def _animate_expand(self):
-        if not hasattr(self, '_anim_label') or self._anim_label is None:
-            if hasattr(self, '_anim_timer') and self._anim_timer:
-                self._anim_timer.stop()
-            return
-
-        self._anim_scale += 0.006
-
-        if self._anim_scale >= 1.0:
-            self._anim_scale = 1.0
-            self._update_anim_geometry()
-            self._anim_timer.stop()
-            self._anim_timer = None
-            QTimer.singleShot(2000, self._finish_shutter_animation)
-            return
-
-        self._update_anim_geometry()
-
-    def _finish_shutter_animation(self):
-        if hasattr(self, '_anim_label') and self._anim_label:
-            try:
-                self._anim_label.deleteLater()
-            except:
-                pass
-            self._anim_label = None
-
-        # video_label 크기 강제 복원
-        if hasattr(self, '_anim_vw') and hasattr(self, '_anim_vh'):
-            self.video_label.setMinimumSize(0, 0)
-            self.video_label.setMaximumSize(16777215, 16777215)
-            self.video_container.updateGeometry()
-            QApplication.processEvents()
-
-        # video_label 크기 고정 해제 (원래 레이아웃으로 복원)
-        self.video_label.setMinimumSize(0, 0)
-        self.video_label.setMaximumSize(16777215, 16777215)
-
-        try:
-            self.cam_thread.change_pixmap_signal.connect(self.update_image)
-        except:
-            pass
-
     def _on_photo_saved(self, filepath):
         """파일 저장 완료 후 미리보기 업데이트 및 다음 컷 진행 (메인 스레드)"""
         self.captured_files.append(filepath)
@@ -3092,17 +2982,10 @@ class KioskMain(QMainWindow):
                 else:
                     lbl.setPixmap(scaled)
 
-        # 5. 다음 컷으로 진행 (애니메이션 완료 후)
+        # 5. 다음 컷으로 진행
         self.current_shot_idx += 1
         self.current_countdown_display = 0
-
-        def _wait_for_anim_then_next():
-            if hasattr(self, '_anim_label') and self._anim_label:
-                QTimer.singleShot(200, _wait_for_anim_then_next)
-            else:
-                QTimer.singleShot(500, self.prepare_next_shot)
-
-        _wait_for_anim_then_next()
+        QTimer.singleShot(1000, self.prepare_next_shot)
 
 if __name__ == "__main__":
     # 🔥 PyQt6용 DPI 스케일링 정책 (윈도우 대응)
